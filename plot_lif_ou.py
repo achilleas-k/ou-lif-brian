@@ -100,11 +100,12 @@ if __name__=='__main__':
     figure(figsize=(8, 3))
     plot(T_ou*1000, V_ou*1000)
     xlabel('t (ms)')
-    ylabel('Membrane potential (mV)')
-    title('OU Voltage')
+    ylabel('mV')
+    # title('OU Voltage')
     axis(ax_limits)
     fnum += 1
     mpl.rcParams['font.size'] = 12
+    subplots_adjust(bottom=0.2)
     savefig('ou_vs_lif_a.pdf')
 
     #subplot(frows, fcols, fnum)
@@ -118,11 +119,11 @@ if __name__=='__main__':
     figure(figsize=(8, 3))
     plot(T_lif*1000, V_lif*1000)
     xlabel('t (ms)')
-    ylabel('Membrane potential (mV)')
-    title('LIF Voltage')
+    ylabel('mV')
+    # title('LIF Voltage')
     axis(ax_limits)
     fnum += 1
 
-    # subplots_adjust(hspace=0.4)
     mpl.rcParams['font.size'] = 12
+    subplots_adjust(bottom=0.2)
     savefig('ou_vs_lif_b.pdf')
