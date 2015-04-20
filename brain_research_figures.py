@@ -13,6 +13,7 @@ import sys, os
 #rc('font',**{'family':'sans-serif','sans-serif':['Bitstream Vera Sans']})
 #rc('text', usetex=True) # use latex
 plot_save_loc = 'brain_research_figures'
+plot_save_loc = '/home/achilleas/tmp'
 
 def plot_methodology():
     '''
@@ -104,7 +105,7 @@ def plot_methodology():
     yticks(muticks, muticklabels)
     axis(axeslimits_period)
     subplot(5,1,5)
-    plot(binedges[:-1]+0.5*period/10, avgest, color='black', linestyle='-',
+    plot(binedges[:-1]+0.5*period/10, avgest, color='blue', linestyle='-',
             marker='.', markersize=10)
     plot(T, signal, color='grey', linestyle='--')
     title(r'E%s' % titalign)
@@ -163,8 +164,8 @@ def plot_est_vs_act_err(x_data, y_data, x_label, y_label, figname='',
     dpi = 100
     size = (size[0]/dpi, size[1]/dpi)
     figure(figsize=size, dpi=dpi)
-    scatter(x_data, y_data, color='black')
-    errorbar(x_data, y_data, yerr=y_errb, ecolor='black', fmt=None)
+    scatter(x_data, y_data, color='blue')
+    errorbar(x_data, y_data, yerr=y_errb, ecolor='blue', fmt="none")
     plot(oneline, oneline, color='gray', linestyle='--', label='1:1')
     xlabel(x_label, fontsize=fontsize)
     if ticks is None:
@@ -174,8 +175,9 @@ def plot_est_vs_act_err(x_data, y_data, x_label, y_label, figname='',
         xticks(ticks[0], ticks[1], fontsize=fontsize)
         yticks(ticks[0], ticks[1], fontsize=fontsize)
     ylabel(y_label, fontsize=fontsize)
-    title(plot_title, fontsize=fontsize)
-    subplots_adjust(left=0.175, bottom=0.25, right=0.85)
+    # title(plot_title, fontsize=fontsize)
+    leftright = 0.1*12/size[0]
+    subplots_adjust(left=leftright, bottom=0.2, right=1-leftright)
     if axis_limits is not None:
         axis(axis_limits)
     savetypes = ["pdf", "png", "eps", "svg"]
@@ -195,16 +197,17 @@ def mu_offs_amp_fee(mu_offs_actual, mu_amp_actual, freq_actual,
     figure(num=1, figsize=(8, 6), dpi=100)
     clf()
     nzerr = flatnonzero(fe_err)
-    scatter(mu_offs_actual, mu_amp_actual, c='black', marker='.', s=10,
+    scatter(mu_offs_actual, mu_amp_actual, c='blue', marker='.', s=10,
             label=r'$ \varepsilon_f  = 0 $')
     scatter(array(mu_offs_actual)[nzerr], array(mu_amp_actual)[nzerr],
-            c='black', marker='^', s=100, label=r'$ \varepsilon_f > 0 $')
+            c='blue', marker='^', s=100, label=r'$ \varepsilon_f > 0 $')
     xlabel('$\mu_0 \mathrm{(mV/ms)}$', size=15)
     ylabel('$\mu_a \mathrm{(mV/ms)}$', size=15)
+    axis([0, 2.2, 0, 2.2])
     xticks(fontsize=15)
     yticks(fontsize=15)
     legend()
-    title("Non-zero frequency estimation errors", size=15)
+    # title("Non-zero frequency estimation errors", size=15)
     savefig('%s/mu_for_nz_freq_err.svg' % plot_save_loc)
     savefig('%s/mu_for_nz_freq_err.eps' % plot_save_loc)
     savefig('%s/mu_for_nz_freq_err.png' % plot_save_loc)
@@ -220,20 +223,24 @@ def plot_cv_errf(CV, freq_est, freq_actual):
     clf()
     fontsize = 15
     subplot(2,1,1)
-    scatter(CV, ferr, c='k')
+    scatter(CV, ferr, c='b')
     ylabel(r'$ \varepsilon_f $', size=fontsize)
-    xticks(size=fontsize)
+    xt, xl = xticks()
+    xticks(xt, [])
     yticks(frange(2, 10, 2), size=fontsize)
     axis([0, 2.5, 0, 10])
+    grid()
     subplot(2,1,2)
     cv_bins = frange(0, 2.5, 0.05)
     CVh, ignore = histogram(CV, bins=cv_bins)
     CVe, ignore = histogram(CV[ferr>0], bins=cv_bins)
     condProb = ([1.0*cve/cvh if cvh else 0 for cve, cvh in zip(CVe, CVh)])
-    plot(cv_bins[:-1], condProb, 'k')
+    plot(cv_bins[:-1], condProb, 'b')
     xlabel('CV', size=fontsize)
     xticks(size=fontsize)
     yticks(frange(0.2, 0.6, 0.2), size=fontsize)
+    grid()
+    subplots_adjust(bottom=0.1, left=0.1)
     savefig('%s/CV_freq_est_err.eps' % (plot_save_loc))
     savefig('%s/CV_freq_est_err.svg' % (plot_save_loc))
     savefig('%s/CV_freq_est_err.png' % (plot_save_loc))
@@ -242,7 +249,7 @@ def plot_cv_errf(CV, freq_est, freq_actual):
     return
 
 def plot_example_results(mu_t_est, mu_offs, mu_amp,
-                        sigma_offs, sigma_amp, freq, spiketimes):
+                         sigma_offs, sigma_amp, freq, spiketimes):
     '''
     Plots three figures that display the methodology on example data.
     Also plot a fourth, three-panel figure as an alternative.
@@ -250,6 +257,7 @@ def plot_example_results(mu_t_est, mu_offs, mu_amp,
     # find simulation index
     index = (mu_offs == 1.6) & (mu_amp == 0.4) &\
             (sigma_offs == 0.4) & (sigma_amp == 0.4) & (freq == 5)
+    index = np.flatnonzero(index)
     if len(index) > 1:
         print('Multiple simulations found for example data.')
         index = index[0]
@@ -263,9 +271,16 @@ def plot_example_results(mu_t_est, mu_offs, mu_amp,
     duration = 5*second
     t = arange(0*second, duration, 0.1*ms)
     theoretical = sin(f*2*pi*t)*ma+mo
+    print(mt)
+    print("""
+          mo: {}, ma: {}, so: {}, sa: {},
+          f: {}, mt: {}, spikes: {}, t: {}""".format(mo, ma,
+                                                     so, sa,
+                                                     f, len(mt),
+                                                     len(spikes), len(t)))
     # individual estimates
     figure(1)
-    plot(spikes, mt, '-o', color='black', label=r'$\hat\mu$')
+    plot(spikes, mt, '-o', color='blue', label=r'$\hat\mu$')
     plot(t, theoretical, '--', color='grey', label=r'$\mu(t)$')
     legend(loc='best')
     xlabel(r't (sec)')
@@ -280,7 +295,7 @@ def plot_example_results(mu_t_est, mu_offs, mu_amp,
     figure(2)
     period = 1/f
     periodspikes = spikes % period
-    plot(periodspikes, mt, 'o', color='black', label=r'$\hat\mu$')
+    plot(periodspikes, mt, 'o', color='blue', label=r'$\hat\mu$')
     plot(t, theoretical, '--', color='grey', label=r'$\mu(t)$')
     legend(loc='best')
     xlabel(r't (sec)')
@@ -300,7 +315,7 @@ def plot_example_results(mu_t_est, mu_offs, mu_amp,
         binmu = est[binspike_inds]
         avgest.append(mean(binmu) if len(binmu) else 0)
     avgest = array(avgest)
-    plot(binedges[:-1]+0.5*period/10, avgest, color='black', linestyle='-',
+    plot(binedges[:-1]+0.5*period/10, avgest, color='blue', linestyle='-',
             marker='.', markersize=10)
     plot(t, theoretical, '--', color='grey', label=r'$\mu(t)$')
     savefig('%s/mu_t_est_actual_binned.eps' % (plot_save_loc))
@@ -381,73 +396,76 @@ if __name__=='__main__':
     # Figure 1
     #plot_methodology()
     # Figure 2
-    #plot_est_vs_act_err(freq_actual, freq_est, '$f \mathrm{(Hz)}$',
-    #        '$\hat{f} \mathrm{(Hz)}$',
-    #    'frequency_estimation', plot_zeros=True, axis_limits=[0, 25, 0, 25])
+    plot_est_vs_act_err(freq_actual, freq_est, '$f \mathrm{(Hz)}$',
+                        '$\hat{f} \mathrm{(Hz)}$', 'frequency_estimation',
+                        plot_zeros=True, axis_limits=[0, 25, 0, 25])
     # Figure 3
-    #mu_offs_amp_fee(mu_offs_actual, mu_amp_actual, freq_actual, freq_est)
+    mu_offs_amp_fee(mu_offs_actual, mu_amp_actual, freq_actual, freq_est)
     # Figure 4
     plot_cv_errf(CV, freq_est, freq_actual)
     # Figure 5, 6, 7
-    #plot_example_results(mu_t_est, mu_offs_actual, mu_amp_actual,
-    #            sigma_offs_actual, sigma_amp_actual, freq_actual, spiketimes)
+    plot_example_results(mu_t_est, mu_offs_actual, mu_amp_actual,
+                         sigma_offs_actual, sigma_amp_actual,
+                         freq_actual, spiketimes)
     # Figure 8A
-    #plot_est_vs_act_err(mu_peaks_actual, mu_peaks_est,
-    #        '$\mu_p \mathrm{(mV/ms)}$',
-    #        '$\hat{\mu}_p \mathrm{(mV/ms)}$', 'mu_peaks_estimation',
-    #        plot_zeros=True,
-    #        axis_limits=[0, 4.5, 0, 4.5], size=(1200, 450),
-    #        plot_title='A'+' '*110,
-    #        ticks=(frange(0, 4.5, 0.5), [0, '', 1, '', 2, '', 3, '', 4, '']),
-    #        )
+    plot_est_vs_act_err(mu_peaks_actual, mu_peaks_est,
+                        '$\mu_p \mathrm{(mV/ms)}$',
+                        '$\hat{\mu}_p \mathrm{(mV/ms)}$',
+                        'mu_peaks_estimation',
+                        plot_zeros=True,
+                        axis_limits=[0, 4.5, 0, 4.5], size=(1200, 450),
+                        plot_title='A'+' '*110,
+                        ticks=(frange(0, 4.5, 0.5),
+                               [0, '', 1, '', 2, '', 3, '', 4, '']),
+                        )
     ## Figure 8B
-    #plot_est_vs_act_err(mu_offs_actual, mu_offs_est,
-    #        '$\mu_0 \mathrm{(mV/ms)}$',
-    #        '$\hat{\mu}_0 \mathrm{(mV/ms)}$', 'mu_offs_estimation',
-    #        plot_zeros=True,
-    #        axis_limits=[0, 2.5, 0, 2.5],
-    #        size=(600, 450),
-    #        plot_title='B'+' '*65)
+    plot_est_vs_act_err(mu_offs_actual, mu_offs_est,
+            '$\mu_0 \mathrm{(mV/ms)}$',
+            '$\hat{\mu}_0 \mathrm{(mV/ms)}$', 'mu_offs_estimation',
+            plot_zeros=True,
+            axis_limits=[0, 2.5, 0, 2.5],
+            size=(600, 450),
+            plot_title='B'+' '*65)
     ## Figure 8C
-    #plot_est_vs_act_err(mu_amp_actual, mu_amp_est, '$\mu_a \mathrm{(mV/ms)}$',
-    #        '$\hat{\mu}_a \mathrm{(mV/ms)}$',
-    #        'mu_amp_estimation', plot_zeros=True,
-    #        axis_limits=[0, 2.5, 0, 2.5],
-    #        size=(600, 450),
-    #        plot_title='C'+' '*65)
-
+    plot_est_vs_act_err(mu_amp_actual, mu_amp_est, '$\mu_a \mathrm{(mV/ms)}$',
+                        '$\hat{\mu}_a \mathrm{(mV/ms)}$',
+                        'mu_amp_estimation', plot_zeros=True,
+                        axis_limits=[0, 2.5, 0, 2.5],
+                        size=(600, 450),
+                        plot_title='C'+' '*65)
 
 
     ## Figure 9A
-    #plot_est_vs_act_err(sigma_peaks_actual, sigma_peaks_est,
-    #        '$\sigma_p \mathrm{(mV/\sqrt{ms})}$',
-    #        '$\hat{\sigma}_p \mathrm{(mV/\sqrt{ms})}$',
-    #        'sigma_peaks_estimation',
-    #        plot_zeros=True, axis_limits=[-0.2, 2.5, -0.2, 2.5],
-    #        size=(1200, 450), plot_title='A'+' '*110,
-    #        ticks=(frange(0, 2.5, 0.25), [0, '', 0.5, '', 1, '', 1.5, '', 2]),
-    #        )
+    plot_est_vs_act_err(sigma_peaks_actual, sigma_peaks_est,
+                        '$\sigma_p \mathrm{(mV/\sqrt{ms})}$',
+                        '$\hat{\sigma}_p \mathrm{(mV/\sqrt{ms})}$',
+                        'sigma_peaks_estimation',
+                        plot_zeros=True, axis_limits=[-0.2, 2.5, -0.2, 2.5],
+                        size=(1200, 450), plot_title='A'+' '*110,
+                        ticks=(frange(0, 2.5, 0.25),
+                               [0, '', 0.5, '', 1, '', 1.5, '', 2]),
+                        )
 
     ## Figure 9B
-    #plot_est_vs_act_err(sigma_offs_actual, sigma_offs_est,
-    #        '$\sigma_0 \mathrm{(mV/\sqrt{ms})}$',
-    #        '$\hat{\sigma}_0 \mathrm{(mV/\sqrt{ms})}$',
-    #        'sigma_offs_estimation',
-    #        plot_zeros=True, axis_limits=[-0.2, 1.2, -0.2, 1.2],
-    #        size=(600, 450),
-    #        plot_title='B'+' '*65,
-    #        ticks=(frange(0, 1, 0.25), [0, '', 0.5, '', 1]),
-    #        )
+    plot_est_vs_act_err(sigma_offs_actual, sigma_offs_est,
+                        '$\sigma_0 \mathrm{(mV/\sqrt{ms})}$',
+                        '$\hat{\sigma}_0 \mathrm{(mV/\sqrt{ms})}$',
+                        'sigma_offs_estimation',
+                        plot_zeros=True, axis_limits=[-0.2, 1.2, -0.2, 1.2],
+                        size=(600, 450),
+                        plot_title='B'+' '*65,
+                        ticks=(frange(0, 1, 0.25), [0, '', 0.5, '', 1]),
+                        )
     ## Figure 9C
-    #plot_est_vs_act_err(sigma_amp_actual, sigma_amp_est,
-    #        '$\sigma_a \mathrm{(mV/\sqrt{ms})}$',
-    #        '$\hat{\sigma}_a \mathrm{(mV/\sqrt{ms})}$',
-    #        'sigma_amp_estimation',
-    #        plot_zeros=True, axis_limits=[-0.2, 1.2, -0.2, 1.2],
-    #        size=(600, 450),
-    #        plot_title='C'+' '*65,
-    #        ticks=(frange(0, 1, 0.25), [0, '', 0.5, '', 1]),
-    #        )
+    plot_est_vs_act_err(sigma_amp_actual, sigma_amp_est,
+                        '$\sigma_a \mathrm{(mV/\sqrt{ms})}$',
+                        '$\hat{\sigma}_a \mathrm{(mV/\sqrt{ms})}$',
+                        'sigma_amp_estimation',
+                        plot_zeros=True, axis_limits=[-0.2, 1.2, -0.2, 1.2],
+                        size=(600, 450),
+                        plot_title='C'+' '*65,
+                        ticks=(frange(0, 1, 0.25), [0, '', 0.5, '', 1]),
+                        )
 
 
 
