@@ -105,7 +105,7 @@ if __name__=='__main__':
     axis(ax_limits)
     fnum += 1
     mpl.rcParams['font.size'] = 12
-    subplots_adjust(bottom=0.2)
+    subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
     savefig('ou_vs_lif_a.pdf')
 
     #subplot(frows, fcols, fnum)
@@ -125,5 +125,5 @@ if __name__=='__main__':
     fnum += 1
 
     mpl.rcParams['font.size'] = 12
-    subplots_adjust(bottom=0.2)
+    subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
     savefig('ou_vs_lif_b.pdf')
