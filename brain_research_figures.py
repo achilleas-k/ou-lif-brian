@@ -271,13 +271,6 @@ def plot_example_results(mu_t_est, mu_offs, mu_amp,
     duration = 5*second
     t = arange(0*second, duration, 0.1*ms)
     theoretical = sin(f*2*pi*t)*ma+mo
-    print(mt)
-    print("""
-          mo: {}, ma: {}, so: {}, sa: {},
-          f: {}, mt: {}, spikes: {}, t: {}""".format(mo, ma,
-                                                     so, sa,
-                                                     f, len(mt),
-                                                     len(spikes), len(t)))
     # individual estimates
     figure(1)
     plot(spikes, mt, '-o', color='blue', label=r'$\hat\mu$')
@@ -368,7 +361,7 @@ def discrete_mu_recon_avg(spikes, V, freq, nbins, dt=0.1*ms):
 
 if __name__=='__main__':
     # Load the data
-    filename = 'lotsofdata.npz'
+    filename = '/media/olddisks/simdata/ou_lif/lotsofdata.npz'
     archive = np.load(filename)
     mu_offs_est = archive['mu_offs_est']
     mu_offs_actual = archive['mu_offs_actual']
