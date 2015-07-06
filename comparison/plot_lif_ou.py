@@ -6,14 +6,15 @@ from spikerlib.metrics import kreuz
 duration = 1000*ms
 tau = 10*ms
 V_th = 10*mV
+# V_th = 100*mV
 t_refr = 0*ms
 V_reset = 0*mV
 V0 = 0*mV
 
 mu_amp = 1*mV/ms
 mu_offs = 1*mV/ms
-sigma_amp = 0.5*mV/sqrt(ms)
-sigma_offs = 0.5*mV/sqrt(ms)
+sigma_amp = 0.3*mV/sqrt(ms)
+sigma_offs = 0.3*mV/sqrt(ms)
 freq = 20*Hz
 freq_ang = freq*2*pi
 
@@ -60,28 +61,28 @@ def lifsim():
     pulse_spikes = []
     for pt in pulse_times:
         try:
-            pp = PulsePacket(t=pt*second, n=100, sigma=1/(freq*8))
+            pp = PulsePacket(t=pt*second, n=500, sigma=1/(freq*5))
             pulse_spikes.extend(pp.spiketimes)
         except ValueError:
             print("Skipping pulse packet at %s" % (pt*second))
-    pulse_input = SpikeGeneratorGroup(100, pulse_spikes)
-    pulse_conn = Connection(pulse_input, lifnrn, 'V', weight=0.5*mV)
-    poiss_input = PoissonGroup(100, freq)
-    poiss_conn = Connection(poiss_input, lifnrn, 'V', weight=0.0*mV)
-    lifnet.add(pulse_input, pulse_conn, poiss_input, poiss_conn)
+    pulse_input = SpikeGeneratorGroup(500, pulse_spikes)
+    pulse_conn = Connection(pulse_input, lifnrn, 'V', weight=0.1*mV)
+    # poiss_input = PoissonGroup(100, freq)
+    # poiss_conn = Connection(poiss_input, lifnrn, 'V', weight=0.0*mV)
+    lifnet.add(pulse_input, pulse_conn)
 
     V_mon = StateMonitor(lifnrn, 'V', record=True)
     pulse_mon = PopulationRateMonitor(pulse_input, bin=0.1*ms)
-    poiss_mon = PopulationRateMonitor(poiss_input, bin=0.1*ms)
+    # poiss_mon = PopulationRateMonitor(poiss_input, bin=0.1*ms)
     st_mon = SpikeMonitor(lifnrn)
-    lifnet.add(V_mon, pulse_mon, poiss_mon, st_mon)
+    lifnet.add(V_mon, pulse_mon, st_mon)#, poiss_mon, st_mon)
 
     lifnet.run(duration)
 
     V_mon.insert_spikes(st_mon, value=V_th*2)
     times = V_mon.times
     membrane = V_mon[0]
-    input_trace = (pulse_mon.rate + poiss_mon.rate)
+    input_trace = (pulse_mon.rate) # + poiss_mon.rate)
     input_trace = movavg(input_trace, 50)
     input_trace = append(input_trace, zeros(len(times)-len(input_trace)))/50
     return times-times[-1]*0.2, st_mon, membrane, input_trace
@@ -102,7 +103,7 @@ if __name__=='__main__':
     axis(ax_limits)
     mpl.rcParams['font.size'] = 12
     subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
-    savefig('ou_vs_lif_a.pdf')
+    savefig('ou_sin.pdf')
 
     figure(figsize=(8, 3))
     plot(T_lif*1000, V_lif*1000)
@@ -112,10 +113,12 @@ if __name__=='__main__':
 
     mpl.rcParams['font.size'] = 12
     subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
-    savefig('ou_vs_lif_b.pdf')
+    savefig('lif_sin.pdf')
 
     dist = kreuz.distance(S_lif.spiketimes[0], S_ou.spiketimes[0],
                           0*second, duration, duration/(1*ms))
     kdist = np.trapz(dist[1], dist[0])
     print("Spike train distance: {}".format(kdist))
+    memdiff = np.trapz(V_lif, T_lif)-np.trapz(V_ou, T_ou)
+    print("Mem potential diff  : {}".format(memdiff))
     # show()
