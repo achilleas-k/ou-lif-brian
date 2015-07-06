@@ -60,7 +60,7 @@ def lifsim():
     pulse_spikes = []
     for pt in pulse_times:
         try:
-            pp = PulsePacket(t=pt*second, n=100, sigma=1/(freq*5))
+            pp = PulsePacket(t=pt*second, n=100, sigma=1/(freq*8))
             pulse_spikes.extend(pp.spiketimes)
         except ValueError:
             print("Skipping pulse packet at %s" % (pt*second))
