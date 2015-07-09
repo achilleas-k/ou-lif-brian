@@ -114,11 +114,11 @@ def process_results(ou, lif, fnamesuffix):
     dist = kreuz.distance(spikes_lif, spikes_ou,
                           0*second, 0.5*second, 500)
     kdist = np.trapz(dist[1], dist[0])
-    print("Spike train distance   : {}".format(kdist))
-    maxdiff = max(abs(voltage_lif[tidx]-voltage_ou[tidx]))
-    print("Max mem potential diff : {}".format(maxdiff))
-    meandiff = mean(abs(voltage_lif[tidx]-voltage_ou[tidx]))
-    print("Mean mem potential diff: {}".format(meandiff))
+    print("Spike train distance  : {}".format(kdist))
+    maxdiff = np.max(np.abs(voltage_lif[tidx]-voltage_ou[tidx]))
+    print("Max mem potential diff: {}".format(maxdiff))
+    sqdiff = np.sum(np.square(voltage_lif[tidx]-voltage_ou[tidx]))
+    print("Sum sq potential diff : {}".format(sqdiff))
 
     ax_limits= [0, 500, 0, 20]
 
@@ -140,8 +140,8 @@ def process_results(ou, lif, fnamesuffix):
     mpl.rcParams["font.size"] = 12
     subplots_adjust(left=0.1, top=0.95, bottom=0.1, right=0.95, hspace=0.2)
     suptitle("SPIKE-distance: {:.3f}, Max V diff: {:.3f} mV, "
-             "Mean V diff: {:.3f} mV".format(kdist,
-                                             maxdiff*1000, meandiff*1000))
+             "Sum sq V diff: {:.3f} mV".format(kdist,
+                                               maxdiff*1000, sqdiff*1000))
     savefig("ou_vs_lif_"+fnamesuffix+".pdf")
 
     figure(figsize=(8, 3))
