@@ -75,11 +75,8 @@ def lifsim(V_th):
     sigma = 1/(freq*5)
     weight = 50*mV/Nin
     for pt in pulse_times:
-        try:
-            pp = PulsePacket(t=pt*second, n=Nin, sigma=sigma)
-            pulse_spikes.extend(pp.spiketimes)
-        except ValueError:
-            print("Skipping pulse packet at %s" % (pt*second))
+        pp = PulsePacket(t=pt*second, n=Nin, sigma=sigma)
+        pulse_spikes.extend(pp.spiketimes)
     pulse_input = SpikeGeneratorGroup(Nin, pulse_spikes)
     pulse_conn = Connection(pulse_input, lifnrn, 'V', weight=weight)
     # poiss_input = PoissonGroup(100, freq)
@@ -113,6 +110,16 @@ def process_results(ou, lif, fnamesuffix):
     times_ou, spikes_ou, voltage_ou = ou
     times_lif, spikes_lif, voltage_lif = lif
 
+    tidx = np.flatnonzero((0 < times_lif) & (times_lif < 0.5))
+    dist = kreuz.distance(spikes_lif, spikes_ou,
+                          0*second, 0.5*second, 500)
+    kdist = np.trapz(dist[1], dist[0])
+    print("Spike train distance   : {}".format(kdist))
+    maxdiff = max(abs(voltage_lif[tidx]-voltage_ou[tidx]))
+    print("Max mem potential diff : {}".format(maxdiff))
+    meandiff = mean(abs(voltage_lif[tidx]-voltage_ou[tidx]))
+    print("Mean mem potential diff: {}".format(meandiff))
+
     ax_limits= [0, 500, 0, 20]
 
     figure(figsize=(8, 6))
@@ -132,6 +139,9 @@ def process_results(ou, lif, fnamesuffix):
     axis(ymax=5)
     mpl.rcParams["font.size"] = 12
     subplots_adjust(left=0.1, top=0.95, bottom=0.1, right=0.95, hspace=0.2)
+    suptitle("SPIKE-distance: {:.3f}, Max V diff: {:.3f} mV, "
+             "Mean V diff: {:.3f} mV".format(kdist,
+                                             maxdiff*1000, meandiff*1000))
     savefig("ou_vs_lif_"+fnamesuffix+".pdf")
 
     figure(figsize=(8, 3))
@@ -152,18 +162,11 @@ def process_results(ou, lif, fnamesuffix):
     mpl.rcParams["font.size"] = 12
     subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
     savefig("lif_sin_"+fnamesuffix+".pdf")
-
-    dist = kreuz.distance(spikes_lif, spikes_ou,
-                          0*second, duration, duration/(1*ms))
-    kdist = np.trapz(dist[1], dist[0])
-    print("Spike train distance: {}".format(kdist))
-    memdiff = max(abs(voltage_lif-voltage_ou))
-    print("Mem potential diff  : {}".format(memdiff))
     # show()
 
 if __name__=='__main__':
     pool = Pool()
-    V_th = [10*mV, 100*mV]
+    V_th = [5*mV, 10*mV, 15*mV, 100*mV]
     poolres = []
     poolres.append(pool.map_async(ousim, V_th))
     poolres.append(pool.map_async(lifsim, V_th))
@@ -172,5 +175,6 @@ if __name__=='__main__':
         res.wait()
         results.extend(res.get())
 
-    process_results(results[0], results[2], "sp")
-    process_results(results[1], results[3], "nosp")
+    for idx in range(len(V_th)):
+        suffix = display_in_unit(V_th[idx], mV).replace(" ", "_")
+        process_results(results[idx], results[idx+len(V_th)], suffix)
