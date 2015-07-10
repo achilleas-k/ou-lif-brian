@@ -5,19 +5,19 @@ from spikerlib.metrics import kreuz
 from multiprocessing.pool import Pool
 
 duration = 1000*ms
-tau = 10*ms
+tau = 1*ms
 t_refr = 0*ms
 V_reset = 0*mV
 V0 = 0*mV
 
-mu_amp = 1.0*mV/ms
-mu_offs = 1.0*mV/ms
+mu_amp = 0.2*mV/ms
+mu_offs = 2.0*mV/ms
 sigma_amp = 0.1*mV/sqrt(ms)
 sigma_offs = 0.1*mV/sqrt(ms)
-freq = 20*Hz
+freq = 10*Hz
 freq_ang = freq*2*pi
 
-results_t = [0.5*second, 1.0*second]
+results_t = [0.3*second, 0.8*second]
 
 dt = defaultclock.dt
 
@@ -42,12 +42,9 @@ def ousim(V_th):
               mu_amp, mu_offs, sigma_amp*sqrt(ms)/mV, sigma_offs*sqrt(ms)/mV,
               freq))
     print("Configuring monitors...")
-    mu_mon = StateMonitor(ounrn, 'mu', record=True)
-    sigma_mon = StateMonitor(ounrn, 'sigma', record=True)
-    I_mon = StateMonitor(ounrn, 'I', record=True)
     V_mon = StateMonitor(ounrn, 'V', record=True)
     st_mon = SpikeMonitor(ounrn)
-    ounet.add(mu_mon, sigma_mon, I_mon, V_mon, st_mon)
+    ounet.add(V_mon, st_mon)
 
     print("Running simulation for {} seconds".format(duration))
     ounet.run(duration)
@@ -67,20 +64,26 @@ def lifsim(V_th):
     lifnrn = NeuronGroup(1, eqs, threshold=V_th, refractory=t_refr,
                                                                 reset=V_reset)
     lifnet.add(lifnrn)
-    pulse_times = arange(1.25, 20, 1)/freq
+    pulse_times = arange(1.25, duration*freq, 1)/freq
     pulse_spikes = []
     print("Generating input spike trains...")
-    Nin = 2000
+    Nin = 5000
+    mu_peak = mu_offs+mu_amp
+    weight = mu_offs/Nin/freq
+    Npoiss = int(Nin*(mu_offs-mu_amp)/mu_peak)
+    Npulse = Nin-Npoiss
     sigma = 1/(freq*5)
-    weight = 50*mV/Nin
-    for pt in pulse_times:
-        pp = PulsePacket(t=pt*second, n=Nin, sigma=sigma)
-        pulse_spikes.extend(pp.spiketimes)
-    pulse_input = SpikeGeneratorGroup(Nin, pulse_spikes)
-    pulse_conn = Connection(pulse_input, lifnrn, 'V', weight=weight)
-    # poiss_input = PoissonGroup(100, freq)
-    # poiss_conn = Connection(poiss_input, lifnrn, 'V', weight=0.0*mV)
-    lifnet.add(pulse_input, pulse_conn)
+    if (Npulse > 0):
+        for pt in pulse_times:
+            pp = PulsePacket(t=pt*second, n=Npulse, sigma=sigma)
+            pulse_spikes.extend(pp.spiketimes)
+        pulse_input = SpikeGeneratorGroup(Npulse, pulse_spikes)
+        pulse_conn = Connection(pulse_input, lifnrn, 'V', weight=weight)
+        lifnet.add(pulse_input, pulse_conn)
+    if (Npoiss > 0):
+        poiss_input = PoissonGroup(Npoiss, freq)
+        poiss_conn = Connection(poiss_input, lifnrn, 'V', weight=weight)
+        lifnet.add(poiss_input, poiss_conn)
 
     print("N_in: {}, Npulses: {}\n"
           "S_in: {}, sigma_in: {} ms, weight: {} mV".format(
@@ -88,10 +91,8 @@ def lifsim(V_th):
 
     print("Configuring monitors...")
     V_mon = StateMonitor(lifnrn, 'V', record=True)
-    pulse_mon = PopulationRateMonitor(pulse_input, bin=0.1*ms)
-    # poiss_mon = PopulationRateMonitor(poiss_input, bin=0.1*ms)
     st_mon = SpikeMonitor(lifnrn)
-    lifnet.add(V_mon, pulse_mon, st_mon)#, poiss_mon, st_mon)
+    lifnet.add(V_mon, st_mon)
 
     print("Running simulation for {} seconds".format(duration))
     lifnet.run(duration)
@@ -107,6 +108,8 @@ def process_results(ou, lif, fnamesuffix):
     times_lif, spikes_lif, voltage_lif = lif
 
     start, end = results_t
+    end -= start
+    start -= start
     dist = kreuz.distance(spikes_lif, spikes_ou,
                           start, end, (end-start)/(1*ms))
     kdist = np.trapz(dist[1], dist[0])
@@ -116,7 +119,7 @@ def process_results(ou, lif, fnamesuffix):
     sqdiff = np.sum(np.square(voltage_lif-voltage_ou))
     print("Sum sq potential diff : {}".format(sqdiff))
 
-    ax_limits= [start*1000, end*1000, 0, 20]
+    ax_limits= [start*1000, end*1000, 0*volt, (mu_amp+mu_offs)*tau*1100]
 
     figure(figsize=(8, 6))
     subplot2grid((5, 1), (0, 0), rowspan=4, colspan=1)
@@ -169,14 +172,13 @@ def cut_results(results, start, end):
     # make start == 0
     time -= start
     spikes -= start
-    global results_t
-    results_t = [start-start, end-start]
     return time, spikes, voltage
 
 
 if __name__=='__main__':
     pool = Pool()
     V_th = [5*mV, 10*mV, 15*mV, 100*mV]
+    V_th = [100*mV]
     poolres = []
     poolres.append(pool.map_async(ousim, V_th))
     poolres.append(pool.map_async(lifsim, V_th))
