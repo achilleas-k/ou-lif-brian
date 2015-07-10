@@ -6,8 +6,6 @@ from multiprocessing.pool import Pool
 
 duration = 1000*ms
 tau = 10*ms
-# V_th = 10*mV
-# V_th = 100*mV
 t_refr = 0*ms
 V_reset = 0*mV
 V0 = 0*mV
@@ -58,7 +56,6 @@ def ousim(V_th):
     V_mon.insert_spikes(st_mon, value=V_th*2)
     times = V_mon.times
     membrane = V_mon[0]
-    # input_trace = (I_mon[0]*sigma_mon[0]/sqrt(dt)+mu_mon[0])
     return times, st_mon.spiketimes[0], membrane
 
 def lifsim(V_th):
@@ -175,6 +172,7 @@ def cut_results(results, start, end):
     global results_t
     results_t = [start-start, end-start]
     return time, spikes, voltage
+
 
 if __name__=='__main__':
     pool = Pool()
