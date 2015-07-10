@@ -10,8 +10,8 @@ t_refr = 0*ms
 V_reset = 0*mV
 V0 = 0*mV
 
-mu_amp = 0.2*mV/ms
-mu_offs = 2.0*mV/ms
+mu_amp = 2.2*mV/ms
+mu_offs = 2.2*mV/ms
 sigma_amp = 0.1*mV/sqrt(ms)
 sigma_offs = 0.1*mV/sqrt(ms)
 freq = 10*Hz
