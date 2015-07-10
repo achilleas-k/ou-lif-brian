@@ -103,9 +103,6 @@ def lifsim(V_th):
     V_mon.insert_spikes(st_mon, value=V_th*2)
     times = V_mon.times
     membrane = V_mon[0]
-    # input_trace = (pulse_mon.rate) # + poiss_mon.rate)
-    # input_trace = movavg(input_trace, 50)
-    # input_trace = append(input_trace, zeros(len(times)-len(input_trace)))/50
     return times, st_mon.spiketimes[0], membrane
 
 def process_results(ou, lif, fnamesuffix):
