@@ -19,6 +19,8 @@ sigma_offs = 0.1*mV/sqrt(ms)
 freq = 20*Hz
 freq_ang = freq*2*pi
 
+results_t = [0.5*second, 1.0*second]
+
 dt = defaultclock.dt
 
 def ousim(V_th):
@@ -57,7 +59,7 @@ def ousim(V_th):
     times = V_mon.times
     membrane = V_mon[0]
     # input_trace = (I_mon[0]*sigma_mon[0]/sqrt(dt)+mu_mon[0])
-    return times-times[-1]*0.2, st_mon.spiketimes[0], membrane
+    return times, st_mon.spiketimes[0], membrane
 
 def lifsim(V_th):
     print("Setting up LIF simulation...")
@@ -104,23 +106,23 @@ def lifsim(V_th):
     # input_trace = (pulse_mon.rate) # + poiss_mon.rate)
     # input_trace = movavg(input_trace, 50)
     # input_trace = append(input_trace, zeros(len(times)-len(input_trace)))/50
-    return times-times[-1]*0.2, st_mon.spiketimes[0], membrane
+    return times, st_mon.spiketimes[0], membrane
 
 def process_results(ou, lif, fnamesuffix):
     times_ou, spikes_ou, voltage_ou = ou
     times_lif, spikes_lif, voltage_lif = lif
 
-    tidx = np.flatnonzero((0 < times_lif) & (times_lif < 0.5))
+    start, end = results_t
     dist = kreuz.distance(spikes_lif, spikes_ou,
-                          0*second, 0.5*second, 500)
+                          start, end, (end-start)/(1*ms))
     kdist = np.trapz(dist[1], dist[0])
     print("Spike train distance  : {}".format(kdist))
-    maxdiff = np.max(np.abs(voltage_lif[tidx]-voltage_ou[tidx]))
+    maxdiff = np.max(np.abs(voltage_lif-voltage_ou))
     print("Max mem potential diff: {}".format(maxdiff))
-    sqdiff = np.sum(np.square(voltage_lif[tidx]-voltage_ou[tidx]))
+    sqdiff = np.sum(np.square(voltage_lif-voltage_ou))
     print("Sum sq potential diff : {}".format(sqdiff))
 
-    ax_limits= [0, 500, 0, 20]
+    ax_limits= [start*1000, end*1000, 0, 20]
 
     figure(figsize=(8, 6))
     subplot2grid((5, 1), (0, 0), rowspan=4, colspan=1)
@@ -164,6 +166,19 @@ def process_results(ou, lif, fnamesuffix):
     savefig("lif_sin_"+fnamesuffix+".pdf")
     # show()
 
+def cut_results(results, start, end):
+    time, spikes, voltage = results
+    tidx = np.flatnonzero((start <= time) & (time < end))
+    time = time[tidx]
+    voltage = voltage[tidx]
+    spikes = spikes[(start <= spikes) & (spikes < end)]
+    # make start == 0
+    time -= start
+    spikes -= start
+    global results_t
+    results_t = [start-start, end-start]
+    return time, spikes, voltage
+
 if __name__=='__main__':
     pool = Pool()
     V_th = [5*mV, 10*mV, 15*mV, 100*mV]
@@ -173,7 +188,9 @@ if __name__=='__main__':
     results = []
     for res in poolres:
         res.wait()
-        results.extend(res.get())
+        cres = res.get()
+        cres = [cut_results(cr, *results_t) for cr in cres]
+        results.extend(cres)
 
     for idx in range(len(V_th)):
         suffix = display_in_unit(V_th[idx], mV).replace(" ", "_")
