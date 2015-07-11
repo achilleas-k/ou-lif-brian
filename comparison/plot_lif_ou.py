@@ -150,9 +150,6 @@ def make_plots(ou, lif, fnamesuffix):
     plt.axis(ymax=5)
     mpl.rcParams["font.size"] = 12
     plt.subplots_adjust(left=0.1, top=0.95, bottom=0.1, right=0.95, hspace=0.2)
-    # plt.suptitle("SPIKE-distance: {:.3f}, Max V diff: {:.3f} mV, "
-    #          "Sum sq V diff: {:.3f} mV".format(kdist,
-    #                                            maxdiff*1000, sqdiff*1000))
     plt.savefig("ou_vs_lif_"+fnamesuffix+".pdf")
 
     plt.figure(figsize=(8, 3))
@@ -173,7 +170,6 @@ def make_plots(ou, lif, fnamesuffix):
     mpl.rcParams["font.size"] = 12
     plt.subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
     plt.savefig("lif_sin_"+fnamesuffix+".pdf")
-    # show()
 
 def cut_results(results, start, end):
     time, spikes, voltage = results
