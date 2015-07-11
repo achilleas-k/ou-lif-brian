@@ -1,23 +1,26 @@
 from __future__ import print_function
+import brian
 from brian import (Network, defaultclock, clock, Equations, NeuronGroup,
                    PulsePacket, SpikeGeneratorGroup, Connection,
-                   PoissonGroup, display_in_unit,
+                   PoissonGroup, display_in_unit, sqrt,
                    StateMonitor, SpikeMonitor, mV, ms, second, Hz)
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import sqrt, pi
 import matplotlib as mpl
 from spikerlib.metrics import kreuz
 from multiprocessing.pool import Pool
 
+sin = brian.sin
+pi = brian.pi
+
 duration = 1000*ms
-tau = 20*ms
+tau = 10*ms
 t_refr = 0*ms
 V_reset = 0*mV
 V0 = 0*mV
 
-mu_amp = 2.2*mV/ms
-mu_offs = 2.2*mV/ms
+mu_amp = 0.3*mV/ms
+mu_offs = 0.3*mV/ms
 sigma_amp = 0.1*mV/sqrt(ms)
 sigma_offs = 0.1*mV/sqrt(ms)
 freq = 10*Hz
@@ -68,32 +71,35 @@ def lifsim(V_th):
     eqs = Equations('dV/dt = (-V+V0)/tau : volt')
     eqs.prepare()
     lifnrn = NeuronGroup(1, eqs, threshold=V_th, refractory=t_refr,
-                                                                reset=V_reset)
+                         reset=V_reset)
     lifnet.add(lifnrn)
     pulse_times = (np.arange(1, duration*freq, 1)+0.25)/freq
     pulse_spikes = []
     print("Generating input spike trains...")
     Nin = 5000
-    mu_peak = mu_offs+mu_amp
-    weight = mu_offs/Nin/freq
-    Npoiss = int(Nin*(mu_offs-mu_amp)/mu_peak)
-    Npulse = Nin-Npoiss
+    # mu_peak = mu_offs+mu_amp
+    # weight = mu_offs/Nin/freq
+    Npoiss = 5000
+    Npulse = 5000
+    wpoiss = (mu_offs-mu_amp)/(Npoiss*freq)
+    wpulse = mu_amp/(Npulse*freq)
     sigma = 1/(freq*5)
-    if (Npulse > 0):
+    if (wpulse != 0):
         for pt in pulse_times:
             pp = PulsePacket(t=pt*second, n=Npulse, sigma=sigma)
             pulse_spikes.extend(pp.spiketimes)
         pulse_input = SpikeGeneratorGroup(Npulse, pulse_spikes)
-        pulse_conn = Connection(pulse_input, lifnrn, 'V', weight=weight)
+        pulse_conn = Connection(pulse_input, lifnrn, 'V', weight=wpulse)
         lifnet.add(pulse_input, pulse_conn)
-    if (Npoiss > 0):
+    if (wpoiss != 0):
         poiss_input = PoissonGroup(Npoiss, freq)
-        poiss_conn = Connection(poiss_input, lifnrn, 'V', weight=weight)
+        poiss_conn = Connection(poiss_input, lifnrn, 'V', weight=wpoiss)
         lifnet.add(poiss_input, poiss_conn)
 
-    print("N_in: {}, Npulses: {}\n"
-          "S_in: {}, sigma_in: {} ms, weight: {} mV".format(
-              Nin, len(pulse_times), 1.0, sigma*1000, weight*1000))
+    print("N_in: {}, Np: {}, Ns: {}, wp: {} mV, ws: {} mV\n"
+          "S_in: {}, sigma_in: {} ms".format(
+              Nin, Npoiss, Npulse, wpoiss*1000, wpulse*1000,
+              1.0, sigma*1000))
 
     print("Configuring monitors...")
     V_mon = StateMonitor(lifnrn, 'V', record=True)
@@ -109,7 +115,7 @@ def lifsim(V_th):
     membrane = V_mon[0]
     return times, st_mon.spiketimes[0], membrane
 
-def process_results(ou, lif):
+def process_results(ou, lif, V_th):
     times_ou, spikes_ou, voltage_ou = ou
     times_lif, spikes_lif, voltage_lif = lif
 
@@ -125,13 +131,23 @@ def process_results(ou, lif):
     sqdiff = np.sum(np.square(voltage_lif-voltage_ou))
     print("Sum sq potential diff : {}".format(sqdiff))
 
+    # print("##### LaTeX table row #####")
+    # print("{:.2f} & {:.2f} & {:.2f} & {:.2f} & {} & {} & {} & "
+    #       "{:.2f} & {:.2f} & {:.2f} \\\\".format(
+    #           mu_offs, mu_amp, sigma_offs*sqrt(ms)/mV, sigma_amp*sqrt(ms)/mV,
+    #           freq, tau*1000, V_th*1000, maxdiff*1000, sqdiff*1000, kdist))
+    # print("###### end table row ######")
+
+
 def make_plots(ou, lif, fnamesuffix):
     times_ou, spikes_ou, voltage_ou = ou
     times_lif, spikes_lif, voltage_lif = lif
     start, end = results_t
     end -= start
     start -= start
-    ax_limits= {"xmin": start*1000, "xmax": end*1000}
+    ax_limits= {"xmin": start*1000, "xmax": end*1000,
+                "ymin": min(0, min(voltage_ou*1000)),
+                "ymax": max(0, max(voltage_ou*1000))}
 
     plt.figure(figsize=(8, 6))
     plt.subplot2grid((5, 1), (0, 0), rowspan=4, colspan=1)
@@ -186,7 +202,6 @@ def cut_results(results, start, end):
 if __name__=='__main__':
     pool = Pool()
     V_th = [5*mV, 10*mV, 15*mV, 100*mV]
-    V_th = [100*mV]
     poolres = []
     poolres.append(pool.map_async(ousim, V_th))
     poolres.append(pool.map_async(lifsim, V_th))
@@ -199,4 +214,5 @@ if __name__=='__main__':
 
     for idx in range(len(V_th)):
         suffix = display_in_unit(V_th[idx], mV).replace(" ", "_")
-        process_results(results[idx], results[idx+len(V_th)])
+        process_results(results[idx], results[idx+len(V_th)], V_th[idx])
+        # make_plots(results[idx], results[idx+len(V_th)], suffix)
