@@ -5,7 +5,7 @@ from spikerlib.metrics import kreuz
 from multiprocessing.pool import Pool
 
 duration = 1000*ms
-tau = 1*ms
+tau = 20*ms
 t_refr = 0*ms
 V_reset = 0*mV
 V0 = 0*mV
@@ -64,7 +64,7 @@ def lifsim(V_th):
     lifnrn = NeuronGroup(1, eqs, threshold=V_th, refractory=t_refr,
                                                                 reset=V_reset)
     lifnet.add(lifnrn)
-    pulse_times = arange(1.25, duration*freq, 1)/freq
+    pulse_times = (arange(1, duration*freq, 1)+0.25)/freq
     pulse_spikes = []
     print("Generating input spike trains...")
     Nin = 5000
