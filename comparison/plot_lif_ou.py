@@ -1,5 +1,11 @@
 from __future__ import print_function
-from brian import *
+from brian import (Network, defaultclock, clock, Equations, NeuronGroup,
+                   PulsePacket, SpikeGeneratorGroup, Connection,
+                   PoissonGroup, display_in_unit,
+                   StateMonitor, SpikeMonitor, mV, ms, second, Hz)
+import matplotlib.pyplot as plt
+import numpy as np
+from numpy import sqrt, pi
 import matplotlib as mpl
 from spikerlib.metrics import kreuz
 from multiprocessing.pool import Pool
@@ -64,7 +70,7 @@ def lifsim(V_th):
     lifnrn = NeuronGroup(1, eqs, threshold=V_th, refractory=t_refr,
                                                                 reset=V_reset)
     lifnet.add(lifnrn)
-    pulse_times = (arange(1, duration*freq, 1)+0.25)/freq
+    pulse_times = (np.arange(1, duration*freq, 1)+0.25)/freq
     pulse_spikes = []
     print("Generating input spike trains...")
     Nin = 5000
@@ -103,7 +109,7 @@ def lifsim(V_th):
     membrane = V_mon[0]
     return times, st_mon.spiketimes[0], membrane
 
-def process_results(ou, lif, fnamesuffix):
+def process_results(ou, lif):
     times_ou, spikes_ou, voltage_ou = ou
     times_lif, spikes_lif, voltage_lif = lif
 
@@ -119,48 +125,54 @@ def process_results(ou, lif, fnamesuffix):
     sqdiff = np.sum(np.square(voltage_lif-voltage_ou))
     print("Sum sq potential diff : {}".format(sqdiff))
 
-    ax_limits= [start*1000, end*1000, 0*volt, (mu_amp+mu_offs)*tau*1100]
+def make_plots(ou, lif, fnamesuffix):
+    times_ou, spikes_ou, voltage_ou = ou
+    times_lif, spikes_lif, voltage_lif = lif
+    start, end = results_t
+    end -= start
+    start -= start
+    ax_limits= [start*1000, end*1000, 0*mV, (mu_amp+mu_offs)*tau*1100]
 
-    figure(figsize=(8, 6))
-    subplot2grid((5, 1), (0, 0), rowspan=4, colspan=1)
-    plot(times_lif*1000, voltage_lif*1000)
-    plot(times_ou*1000, voltage_ou*1000)
-    axis(ax_limits)
-    ylabel("mV")
-    xt, _ = xticks()
-    xticks(xt, [])
-    subplot2grid((5, 1), (4, 0), rowspan=1, colspan=1)
-    plot(times_ou*1000, abs(voltage_ou-voltage_lif)*1000)
-    xlabel("t (ms)")
-    ylabel("mV")
-    yticks([0, 2.5, 5])
-    axis(ax_limits)
-    axis(ymax=5)
+    plt.figure(figsize=(8, 6))
+    plt.subplot2grid((5, 1), (0, 0), rowspan=4, colspan=1)
+    plt.plot(times_lif*1000, voltage_lif*1000)
+    plt.plot(times_ou*1000, voltage_ou*1000)
+    plt.axis(ax_limits)
+    plt.ylabel("mV")
+    xt, _ = plt.xticks()
+    plt.xticks(xt, [])
+    plt.subplot2grid((5, 1), (4, 0), rowspan=1, colspan=1)
+    plt.plot(times_ou*1000, abs(voltage_ou-voltage_lif)*1000)
+    plt.xlabel("t (ms)")
+    plt.ylabel("mV")
+    plt.yticks([0, 2.5, 5])
+    plt.axis(ax_limits)
+    plt.axis(ymax=5)
     mpl.rcParams["font.size"] = 12
-    subplots_adjust(left=0.1, top=0.95, bottom=0.1, right=0.95, hspace=0.2)
-    suptitle("SPIKE-distance: {:.3f}, Max V diff: {:.3f} mV, "
-             "Sum sq V diff: {:.3f} mV".format(kdist,
-                                               maxdiff*1000, sqdiff*1000))
-    savefig("ou_vs_lif_"+fnamesuffix+".pdf")
+    plt.subplots_adjust(left=0.1, top=0.95, bottom=0.1, right=0.95, hspace=0.2)
+    # plt.suptitle("SPIKE-distance: {:.3f}, Max V diff: {:.3f} mV, "
+    #          "Sum sq V diff: {:.3f} mV".format(kdist,
+    #                                            maxdiff*1000, sqdiff*1000))
+    plt.savefig("ou_vs_lif_"+fnamesuffix+".pdf")
 
-    figure(figsize=(8, 3))
-    plot(times_ou*1000, voltage_ou*1000)
-    xlabel("t (ms)")
-    ylabel("mV")
-    axis(ax_limits)
+    plt.figure(figsize=(8, 3))
+    plt.plot(times_ou*1000, voltage_ou*1000)
+    plt.xlabel("t (ms)")
+    plt.ylabel("mV")
+    plt.axis(ax_limits)
     mpl.rcParams["font.size"] = 12
-    subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
-    savefig("ou_sin_"+fnamesuffix+".pdf")
+    plt.subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
+    plt.savefig("ou_sin_"+fnamesuffix+".pdf")
 
-    figure(figsize=(8, 3))
-    plot(times_lif*1000, voltage_lif*1000)
-    xlabel("t (ms)")
-    ylabel("mV")
-    axis(ax_limits)
+    plt.figure(figsize=(8, 3))
+    plt.plot(times_lif*1000, voltage_lif*1000)
+    plt.xlabel("t (ms)")
+    plt.ylabel("mV")
+    plt.axis(ax_limits)
 
     mpl.rcParams["font.size"] = 12
-    subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
-    savefig("lif_sin_"+fnamesuffix+".pdf")
+    plt.subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
+    plt.savefig("lif_sin_"+fnamesuffix+".pdf")
     # show()
 
 def cut_results(results, start, end):
@@ -191,4 +203,4 @@ if __name__=='__main__':
 
     for idx in range(len(V_th)):
         suffix = display_in_unit(V_th[idx], mV).replace(" ", "_")
-        process_results(results[idx], results[idx+len(V_th)], suffix)
+        process_results(results[idx], results[idx+len(V_th)])
