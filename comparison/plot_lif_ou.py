@@ -131,13 +131,13 @@ def make_plots(ou, lif, fnamesuffix):
     start, end = results_t
     end -= start
     start -= start
-    ax_limits= [start*1000, end*1000, 0*mV, (mu_amp+mu_offs)*tau*1100]
+    ax_limits= {"xmin": start*1000, "xmax": end*1000}
 
     plt.figure(figsize=(8, 6))
     plt.subplot2grid((5, 1), (0, 0), rowspan=4, colspan=1)
     plt.plot(times_lif*1000, voltage_lif*1000)
     plt.plot(times_ou*1000, voltage_ou*1000)
-    plt.axis(ax_limits)
+    plt.axis(**ax_limits)
     plt.ylabel("mV")
     xt, _ = plt.xticks()
     plt.xticks(xt, [])
@@ -146,7 +146,7 @@ def make_plots(ou, lif, fnamesuffix):
     plt.xlabel("t (ms)")
     plt.ylabel("mV")
     plt.yticks([0, 2.5, 5])
-    plt.axis(ax_limits)
+    plt.axis(**ax_limits)
     plt.axis(ymax=5)
     mpl.rcParams["font.size"] = 12
     plt.subplots_adjust(left=0.1, top=0.95, bottom=0.1, right=0.95, hspace=0.2)
@@ -156,7 +156,7 @@ def make_plots(ou, lif, fnamesuffix):
     plt.plot(times_ou*1000, voltage_ou*1000)
     plt.xlabel("t (ms)")
     plt.ylabel("mV")
-    plt.axis(ax_limits)
+    plt.axis(**ax_limits)
     mpl.rcParams["font.size"] = 12
     plt.subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
     plt.savefig("ou_sin_"+fnamesuffix+".pdf")
@@ -165,7 +165,7 @@ def make_plots(ou, lif, fnamesuffix):
     plt.plot(times_lif*1000, voltage_lif*1000)
     plt.xlabel("t (ms)")
     plt.ylabel("mV")
-    plt.axis(ax_limits)
+    plt.axis(**ax_limits)
 
     mpl.rcParams["font.size"] = 12
     plt.subplots_adjust(left=0.1, top=0.95, bottom=0.2, right=0.95)
