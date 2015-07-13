@@ -193,7 +193,6 @@ def cut_results(results, start, end):
     time = time[tidx]
     voltage = voltage[tidx]
     spikes = spikes[(start <= spikes) & (spikes < end)]
-    # make start == 0
     time -= start
     spikes -= start
     return time, spikes, voltage
