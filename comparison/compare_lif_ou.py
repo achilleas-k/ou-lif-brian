@@ -131,9 +131,9 @@ def process_results(ou, lif, config):
     # print("Sum sq potential diff : {}".format(sqdiff))
 
     data = np.load("results.npz")
-    data["sd"].append(kdist)
-    data["md"].append(maxdiff)
-    data["sq"].append(sqdiff)
+    np.append(data["sd"], kdist)
+    np.append(data["md"], maxdiff)
+    np.append(data["sq"], sqdiff)
     np.savez("results.npz", **data)
 
     return kdist, maxdiff, sqdiff
@@ -209,18 +209,22 @@ if __name__=='__main__':
     # param values
     mu_amp     = [0.3*mV/ms, 0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
     mu_offs    = [0.3*mV/ms, 0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
-    sigma_amp  = [0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
-    sigma_offs = [0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
+    sigma_amp  = [0.1*mV/sqrt(ms)]#, 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
+    sigma_offs = [0.1*mV/sqrt(ms)]#, 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
     freq       = [5*Hz, 10*Hz, 20*Hz]
     V_th       = [5*mV, 10*mV, 15*mV, 100*mV]
+    freq = [10*Hz]
+    V_th = [100*mV]
 
     configs = it.product(mu_amp, mu_offs, sigma_amp, sigma_offs,
                          freq, V_th)
     configs = [c for c in configs]
+    print("{} configurations total".format(len(configs)))
     poolres = []
     poolres.append(pool.map_async(ousim,  configs))
     poolres.append(pool.map_async(lifsim, configs))
     results = []
+    print("Generating results...")
     for res in poolres:
         res.wait()
         cres = res.get()
