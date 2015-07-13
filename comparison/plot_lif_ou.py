@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib as mpl
 from spikerlib.metrics import kreuz
 from multiprocessing.pool import Pool
+import itertools as it
 
 sin = brian.sin
 pi = brian.pi
@@ -19,25 +20,19 @@ t_refr = 0*ms
 V_reset = 0*mV
 V0 = 0*mV
 
-mu_amp = 0.3*mV/ms
-mu_offs = 0.3*mV/ms
-sigma_amp = 0.1*mV/sqrt(ms)
-sigma_offs = 0.1*mV/sqrt(ms)
-freq = 10*Hz
-freq_ang = freq*2*pi
-
 results_t = [0.3*second, 0.8*second]
 
 dt = defaultclock.dt
 
-def ousim(V_th):
+def ousim(config):
+    mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th = config
     print("Setting up OU LIF simulation...")
     ounet = Network()
     clock.reinit_default_clock()
     eqs =Equations('dV/dt = mu-(V+V0)/tau + sigma*I/sqrt(dt) : volt')
     eqs+=Equations('dI/dt = -I/dt + xi/sqrt(dt) : 1')
-    eqs+=Equations('mu = mu_amp*sin(t*freq_ang) + mu_offs : volt/second')
-    eqs+=Equations('sigma = sigma_amp*sin(t*freq_ang) + sigma_offs :'
+    eqs+=Equations('mu = mu_amp*sin(t*freq*2*pi) + mu_offs : volt/second')
+    eqs+=Equations('sigma = sigma_amp*sin(t*freq*2*pi) + sigma_offs :'
                                                         ' volt/sqrt(second)')
     eqs.prepare()
     ounrn = NeuronGroup(1, eqs, threshold=V_th, refractory=t_refr,
@@ -64,7 +59,8 @@ def ousim(V_th):
     membrane = V_mon[0]
     return times, st_mon.spiketimes[0], membrane
 
-def lifsim(V_th):
+def lifsim(config):
+    mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th = config
     print("Setting up LIF simulation...")
     lifnet = Network()
     clock.reinit_default_clock()
@@ -200,10 +196,19 @@ def cut_results(results, start, end):
 
 if __name__=='__main__':
     pool = Pool()
-    V_th = [5*mV, 10*mV, 15*mV, 100*mV]
+    # param values
+    mu_amp     = [0.3*mV/ms]
+    mu_offs    = [0.3*mV/ms]
+    sigma_amp  = [0.1*mV/sqrt(ms)]
+    sigma_offs = [0.1*mV/sqrt(ms)]
+    freq       = [5*Hz, 10*Hz, 20*Hz]
+    V_th       = [5*mV, 10*mV, 15*mV, 100*mV]
+
+    configs = it.product(mu_amp, mu_offs, sigma_amp, sigma_offs,
+                         freq, V_th)
     poolres = []
-    poolres.append(pool.map_async(ousim, V_th))
-    poolres.append(pool.map_async(lifsim, V_th))
+    poolres.append(pool.map_async(ousim,  configs))
+    poolres.append(pool.map_async(lifsim, configs))
     results = []
     for res in poolres:
         res.wait()
