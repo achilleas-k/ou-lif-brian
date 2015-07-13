@@ -2,7 +2,7 @@ from __future__ import print_function
 import brian
 from brian import (Network, defaultclock, clock, Equations, NeuronGroup,
                    PulsePacket, SpikeGeneratorGroup, Connection,
-                   PoissonGroup, display_in_unit, sqrt,
+                   PoissonGroup, sqrt,
                    StateMonitor, SpikeMonitor, mV, ms, second, Hz)
 import matplotlib.pyplot as plt
 import numpy as np
@@ -26,7 +26,9 @@ dt = defaultclock.dt
 
 def ousim(config):
     mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th = config
-    print("Setting up OU LIF simulation...")
+    if sigma_amp > sigma_offs:
+        sigma_amp = sigma_offs
+    # print("Setting up OU LIF simulation...")
     ounet = Network()
     clock.reinit_default_clock()
     eqs =Equations('dV/dt = mu-(V+V0)/tau + sigma*I/sqrt(dt) : volt')
@@ -40,19 +42,19 @@ def ousim(config):
     ounet.add(ounrn)
 
     ounrn.V = V0
-    print("mu_amp:    {} mV/ms,       mu_offs:    {} mV/ms\n"
-          "sigma_amp: {} mV/sqrt(ms), sigma_offs: {} mV/sqrt(ms)\n"
-          "frequency: {} Hz".format(
-              mu_amp, mu_offs, sigma_amp*sqrt(ms)/mV, sigma_offs*sqrt(ms)/mV,
-              freq))
-    print("Configuring monitors...")
+    # print("mu_amp:    {} mV/ms,       mu_offs:    {} mV/ms\n"
+    #       "sigma_amp: {} mV/sqrt(ms), sigma_offs: {} mV/sqrt(ms)\n"
+    #       "frequency: {} Hz".format(
+    #           mu_amp, mu_offs, sigma_amp*sqrt(ms)/mV, sigma_offs*sqrt(ms)/mV,
+    #           freq))
+    # print("Configuring monitors...")
     V_mon = StateMonitor(ounrn, 'V', record=True)
     st_mon = SpikeMonitor(ounrn)
     ounet.add(V_mon, st_mon)
 
-    print("Running simulation for {} seconds".format(duration))
+    # print("Running simulation for {} seconds".format(duration))
     ounet.run(duration)
-    print("OU done")
+    # print("OU done")
 
     V_mon.insert_spikes(st_mon, value=V_th*2)
     times = V_mon.times
@@ -61,7 +63,7 @@ def ousim(config):
 
 def lifsim(config):
     mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th = config
-    print("Setting up LIF simulation...")
+    # print("Setting up LIF simulation...")
     lifnet = Network()
     clock.reinit_default_clock()
     eqs = Equations('dV/dt = (-V+V0)/tau : volt')
@@ -71,8 +73,8 @@ def lifsim(config):
     lifnet.add(lifnrn)
     pulse_times = (np.arange(1, duration*freq, 1)+0.25)/freq
     pulse_spikes = []
-    print("Generating input spike trains...")
-    Nin = 5000
+    # print("Generating input spike trains...")
+    # Nin = 5000
     # mu_peak = mu_offs+mu_amp
     # weight = mu_offs/Nin/freq
     Npoiss = 5000
@@ -92,26 +94,27 @@ def lifsim(config):
         poiss_conn = Connection(poiss_input, lifnrn, 'V', weight=wpoiss)
         lifnet.add(poiss_input, poiss_conn)
 
-    print("N_in: {}, Np: {}, Ns: {}, wp: {} mV, ws: {} mV\n"
-          "S_in: {}, sigma_in: {} ms".format(
-              Nin, Npoiss, Npulse, wpoiss*1000, wpulse*1000,
-              1.0, sigma*1000))
+    # print("N_in: {}, Np: {}, Ns: {}, wp: {} mV, ws: {} mV\n"
+    #       "S_in: {}, sigma_in: {} ms".format(
+    #           Nin, Npoiss, Npulse, wpoiss*1000, wpulse*1000,
+    #           1.0, sigma*1000))
 
-    print("Configuring monitors...")
+    # print("Configuring monitors...")
     V_mon = StateMonitor(lifnrn, 'V', record=True)
     st_mon = SpikeMonitor(lifnrn)
     lifnet.add(V_mon, st_mon)
 
-    print("Running simulation for {} seconds".format(duration))
+    # print("Running simulation for {} seconds".format(duration))
     lifnet.run(duration)
-    print("LIF done")
+    # print("LIF done")
 
     V_mon.insert_spikes(st_mon, value=V_th*2)
     times = V_mon.times
     membrane = V_mon[0]
     return times, st_mon.spiketimes[0], membrane
 
-def process_results(ou, lif, V_th):
+def process_results(ou, lif, config):
+    # mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th = config
     times_ou, spikes_ou, voltage_ou = ou
     times_lif, spikes_lif, voltage_lif = lif
 
@@ -121,12 +124,19 @@ def process_results(ou, lif, V_th):
     dist = kreuz.distance(spikes_lif, spikes_ou,
                           start, end, (end-start)/(1*ms))
     kdist = np.trapz(dist[1], dist[0])
-    print("Spike train distance  : {}".format(kdist))
+    # print("Spike train distance  : {}".format(kdist))
     maxdiff = np.max(np.abs(voltage_lif-voltage_ou))
-    print("Max mem potential diff: {}".format(maxdiff))
+    # print("Max mem potential diff: {}".format(maxdiff))
     sqdiff = np.sum(np.square(voltage_lif-voltage_ou))
-    print("Sum sq potential diff : {}".format(sqdiff))
+    # print("Sum sq potential diff : {}".format(sqdiff))
 
+    data = np.load("results.npz")
+    data["sd"].append(kdist)
+    data["md"].append(maxdiff)
+    data["sq"].append(sqdiff)
+    np.savez("results.npz", **data)
+
+    return kdist, maxdiff, sqdiff
     # print("##### LaTeX table row #####")
     # print("{:.2f} & {:.2f} & {:.2f} & {:.2f} & {} & {} & {} & "
     #       "{:.2f} & {:.2f} & {:.2f} \\\\".format(
@@ -197,15 +207,16 @@ def cut_results(results, start, end):
 if __name__=='__main__':
     pool = Pool()
     # param values
-    mu_amp     = [0.3*mV/ms]
-    mu_offs    = [0.3*mV/ms]
-    sigma_amp  = [0.1*mV/sqrt(ms)]
-    sigma_offs = [0.1*mV/sqrt(ms)]
+    mu_amp     = [0.3*mV/ms, 0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
+    mu_offs    = [0.3*mV/ms, 0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
+    sigma_amp  = [0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
+    sigma_offs = [0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
     freq       = [5*Hz, 10*Hz, 20*Hz]
     V_th       = [5*mV, 10*mV, 15*mV, 100*mV]
 
     configs = it.product(mu_amp, mu_offs, sigma_amp, sigma_offs,
                          freq, V_th)
+    configs = [c for c in configs]
     poolres = []
     poolres.append(pool.map_async(ousim,  configs))
     poolres.append(pool.map_async(lifsim, configs))
@@ -215,8 +226,35 @@ if __name__=='__main__':
         cres = res.get()
         cres = [cut_results(cr, *results_t) for cr in cres]
         results.extend(cres)
+        print("{} of {} complete".format(len(results), len(configs)*2))
 
-    for idx in range(len(V_th)):
-        suffix = display_in_unit(V_th[idx], mV).replace(" ", "_")
-        process_results(results[idx], results[idx+len(V_th)], V_th[idx])
-        # make_plots(results[idx], results[idx+len(V_th)], suffix)
+    spike_distance    = []
+    max_difference    = []
+    square_difference = []
+    np.savez("results.npz", sd=spike_distance, md=max_difference,
+             sq=square_difference)
+    for idx in range(len(configs)):
+        kd, md, sq = process_results(results[idx], results[idx+len(V_th)],
+                                     configs[idx])
+        spike_distance.append(kd)
+        max_difference.append(md)
+        square_difference.append(sq)
+
+    spike_distance    = np.array(spike_distance)
+    max_difference    = np.array(max_difference)
+    square_difference = np.array(square_difference)
+
+    plt.figure("Spike distance")
+    plt.hist(spike_distance, bins=50)
+    plt.xlabel("SPIKE-distance")
+    plt.savefig("spike_distance.pdf")
+
+    plt.figure("Max deviation")
+    plt.hist(max_difference*1000, bins=50)
+    plt.xlabel("Maximum deviation (mV)")
+    plt.savefig("max_difference.pdf")
+
+    plt.figure("Squared difference")
+    plt.hist(square_difference*1000, bins=50)
+    plt.xlabel("Summed square difference (mV$^2$")
+    plt.savefig("square_difference.pdf")
