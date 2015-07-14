@@ -1,4 +1,5 @@
 from __future__ import print_function
+import os
 import brian
 from brian import (Network, defaultclock, clock, Equations, NeuronGroup,
                    PulsePacket, SpikeGeneratorGroup, Connection,
@@ -24,8 +25,8 @@ results_t = [0.3*second, 0.8*second]
 
 dt = defaultclock.dt
 
-def ousim(config):
-    mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th = config
+def ousim(mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th):
+    # mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th = config
     if sigma_amp > sigma_offs:
         sigma_amp = sigma_offs
     # print("Setting up OU LIF simulation...")
@@ -61,8 +62,8 @@ def ousim(config):
     membrane = V_mon[0]
     return times, st_mon.spiketimes[0], membrane
 
-def lifsim(config):
-    mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th = config
+def lifsim(mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th):
+    # mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th = config
     # print("Setting up LIF simulation...")
     lifnet = Network()
     clock.reinit_default_clock()
@@ -130,20 +131,12 @@ def process_results(ou, lif, config):
     sqdiff = np.sum(np.square(voltage_lif-voltage_ou))
     # print("Sum sq potential diff : {}".format(sqdiff))
 
-    data = np.load("results.npz")
-    np.append(data["sd"], kdist)
-    np.append(data["md"], maxdiff)
-    np.append(data["sq"], sqdiff)
-    np.savez("results.npz", **data)
-
-    return kdist, maxdiff, sqdiff
-    # print("##### LaTeX table row #####")
-    # print("{:.2f} & {:.2f} & {:.2f} & {:.2f} & {} & {} & {} & "
-    #       "{:.2f} & {:.2f} & {:.2f} \\\\".format(
-    #           mu_offs, mu_amp, sigma_offs*sqrt(ms)/mV, sigma_amp*sqrt(ms)/mV,
-    #           freq, tau*1000, V_th*1000, maxdiff*1000, sqdiff*1000, kdist))
-    # print("###### end table row ######")
-
+    data = load_data("results.npz")
+    OUdict  = {"V": voltage_ou,   "t": times_ou,   "spikes": spikes_ou}
+    LIFdict = {"V": voltage_lif,  "t": times_lif,  "spikes": spikes_lif}
+    data[config] = {"OU": OUdict, "LIF": LIFdict,
+                    "sd": kdist, "md": maxdiff, "sq": sqdiff}
+    np.savez("results.npz", data=data)
 
 def make_plots(ou, lif, fnamesuffix):
     times_ou, spikes_ou, voltage_ou = ou
@@ -203,62 +196,67 @@ def cut_results(results, start, end):
     spikes -= start
     return time, spikes, voltage
 
+def load_data(fname):
+    if os.path.exists(fname):
+        return np.load(fname)["data"].item()
+    else:
+        return {}
 
 if __name__=='__main__':
     pool = Pool()
     # param values
-    mu_amp     = [0.3*mV/ms, 0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
-    mu_offs    = [0.3*mV/ms, 0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
+    mu_amp     = [0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
+    mu_offs    = [0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
     sigma_amp  = [0.1*mV/sqrt(ms)]#, 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
-    sigma_offs = [0.1*mV/sqrt(ms)]#, 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
-    freq       = [5*Hz, 10*Hz, 20*Hz]
-    V_th       = [5*mV, 10*mV, 15*mV, 100*mV]
-    freq = [10*Hz]
-    V_th = [100*mV]
+    sigma_offs = [0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms)]#, 1.0*mV/sqrt(ms)]
+    freq       = [10*Hz, 20*Hz]
+    V_th       = [10*mV, 15*mV, 100*mV]
 
-    configs = it.product(mu_amp, mu_offs, sigma_amp, sigma_offs,
-                         freq, V_th)
-    configs = [c for c in configs]
+    configs = it.product(mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th)
+    data = load_data("results.npz")
+    configs = [c for c in configs if c not in data]
     print("{} configurations total".format(len(configs)))
-    poolres = []
-    poolres.append(pool.map_async(ousim,  configs))
-    poolres.append(pool.map_async(lifsim, configs))
-    results = []
-    print("Generating results...")
-    for res in poolres:
+    # using apply_async instead of map to see progress
+    pool_ou =  [pool.apply_async(ousim,  c) for c in configs]
+    pool_lif = [pool.apply_async(lifsim, c) for c in configs]
+    results_ou = []
+    results_lif = []
+    print("Running OU...")
+    for res in pool_ou:
         res.wait()
         cres = res.get()
-        cres = [cut_results(cr, *results_t) for cr in cres]
-        results.extend(cres)
-        print("{} of {} complete".format(len(results), len(configs)*2))
+        cres = cut_results(cres, *results_t)
+        results_ou.append(cres)
+        print("{} of {} complete".format(len(results_ou), len(pool_ou)))
+    print("Running LIF...")
+    for res in pool_lif:
+        res.wait()
+        cres = res.get()
+        cres = cut_results(cres, *results_t)
+        results_lif.append(cres)
+        print("{} of {} complete".format(len(results_lif), len(pool_lif)))
 
-    spike_distance    = []
-    max_difference    = []
-    square_difference = []
-    np.savez("results.npz", sd=spike_distance, md=max_difference,
-             sq=square_difference)
     for idx in range(len(configs)):
-        kd, md, sq = process_results(results[idx], results[idx+len(V_th)],
-                                     configs[idx])
-        spike_distance.append(kd)
-        max_difference.append(md)
-        square_difference.append(sq)
-
-    spike_distance    = np.array(spike_distance)
-    max_difference    = np.array(max_difference)
-    square_difference = np.array(square_difference)
+        process_results(results_ou[idx], results_lif[idx], configs[idx])
+    data = load_data("results.npz")
+    spike_distance    = [d["sd"] for d in data.itervalues()]
+    max_difference    = [d["md"] for d in data.itervalues()]
+    square_difference = [d["sq"] for d in data.itervalues()]
 
     plt.figure("Spike distance")
     plt.hist(spike_distance, bins=50)
+    plt.axis(xmin=0)
     plt.xlabel("SPIKE-distance")
     plt.savefig("spike_distance.pdf")
 
     plt.figure("Max deviation")
     plt.hist(max_difference*1000, bins=50)
+    plt.axis(xmin=0)
     plt.xlabel("Maximum deviation (mV)")
     plt.savefig("max_difference.pdf")
 
     plt.figure("Squared difference")
     plt.hist(square_difference*1000, bins=50)
-    plt.xlabel("Summed square difference (mV$^2$")
+    plt.axis(xmin=0)
+    plt.xlabel("Summed square difference (mV$^2$)")
     plt.savefig("square_difference.pdf")
