@@ -181,8 +181,8 @@ if __name__=='__main__':
     # param values
     mu_amp     = [0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
     mu_offs    = [0.5*mV/ms, 1.0*mV/ms, 1.5*mV/ms, 2.0*mV/ms]
-    sigma_amp  = [0.1*mV/sqrt(ms)]#, 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
-    sigma_offs = [0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms)]#, 1.0*mV/sqrt(ms)]
+    sigma_amp  = [0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
+    sigma_offs = [0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 1.0*mV/sqrt(ms)]
     freq       = [10*Hz, 20*Hz]
     V_th       = [10*mV, 15*mV, 100*mV]
 
@@ -214,29 +214,3 @@ if __name__=='__main__':
     for idx in range(len(configs)):
         process_results(results_ou[idx], results_lif[idx], configs[idx])
         print("{} of {} complete".format(idx+1, len(configs)))
-    data = load_data("results.npz")
-    spike_distance    = np.array([d["sd"] for d in data.itervalues()])
-    max_difference    = np.array([d["md"] for d in data.itervalues()])
-    square_difference = np.array([d["sq"] for d in data.itervalues()])
-    nspikes = np.array([len(d["OU"]["spikes"])+len(d["LIF"]["spikes"])
-                        for d in data.itervalues()])
-    sp = nspikes > 0
-    nsp = nspikes == 0
-
-    plt.figure("Spike distance")
-    plt.hist(spike_distance[sp], bins=50)
-    plt.axis(xmin=0)
-    plt.xlabel("SPIKE-distance")
-    plt.savefig("spike_distance.pdf")
-
-    plt.figure("Max deviation")
-    plt.hist(max_difference[nsp]*1000, bins=50)
-    plt.axis(xmin=0)
-    plt.xlabel("Maximum deviation (mV)")
-    plt.savefig("max_difference.pdf")
-
-    plt.figure("Squared difference")
-    plt.hist(square_difference[nsp]*1000, bins=50)
-    plt.axis(xmin=0)
-    plt.xlabel("Summed square difference (mV$^2$)")
-    plt.savefig("square_difference.pdf")
