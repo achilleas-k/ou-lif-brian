@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 
 duration = 0.5  # seconds
 
+param_names = ["$\mu_a$", "$\mu_a$", "$\sigma_a$", "$\sigma_0$",
+               "$f$", "$V_{th}$"]
+
 def find_max_item(data, key):
     keyvals = []
     for d in data.itervalues():
@@ -19,9 +22,13 @@ def plot_item(item, name):
     plt.savefig(name+".pdf")
 
 def colour_hist(data, cidx):
+    pn = param_names[cidx]
     grouped_sd = {}
     grouped_md = {}
     grouped_sq = {}
+    maxsd = 0
+    maxmd = 0
+    maxsq = 0
     for config in data:
         k = config[cidx]
         if k in grouped_sd:
@@ -32,36 +39,37 @@ def colour_hist(data, cidx):
             grouped_sd[k] = [data[config]["sd"]]
             grouped_md[k] = [data[config]["md"]]
             grouped_sq[k] = [data[config]["sq"]]
+        maxsd = max(maxsd, data[config]["sd"])
+        maxmd = max(maxsd, data[config]["md"])
+        maxsq = max(maxsd, data[config]["sq"])
+
     for k in grouped_sd:
         plt.figure("Spike distance histogram")
-        plt.hist(grouped_sd[k], label=k)
+        plt.hist(grouped_sd[k], bins=np.linspace(0, maxsd, 11),
+                 label="{} = {}".format(pn, k))
         plt.figure("Max difference histogram")
-        plt.hist(grouped_md[k], label=k)
+        plt.hist(grouped_md[k], bins=np.linspace(0, maxmd, 11),
+                 label="{} = {}".format(pn, k))
         plt.figure("Squared diff   histogram")
-        plt.hist(grouped_sq[k], label=k)
+        plt.hist(grouped_sq[k], bins=np.linspace(0, maxsq, 11),
+                 label="{} = {}".format(pn, k))
 
     plt.figure("Spike distance histogram")
     plt.legend()
-    plt.savefig("sdhist.pdf")
+    plt.savefig("sdhist_{}.pdf".format(pn.replace("$","")))
+    plt.clf()
 
     plt.figure("Max difference histogram")
     plt.legend()
-    plt.savefig("mdhist.pdf")
+    plt.savefig("mdhist_{}.pdf".format(pn.replace("$","")))
+    plt.clf()
 
     plt.figure("Squared diff   histogram")
     plt.legend()
-    plt.savefig("sqhist.pdf")
+    plt.savefig("sqhist_{}.pdf".format(pn.replace("$","")))
+    plt.clf()
 
-
-if __name__ == "__main__":
-    data = np.load("results.npz")["data"].item()
-    maxsd = find_max_item(data, "sd")
-    maxmd = find_max_item(data, "md")
-    maxsq = find_max_item(data, "sq")
-    plot_item(maxsd, "maxsd")
-    plot_item(maxmd, "maxmd")
-    plot_item(maxsq, "maxsq")
-
+def plot_all_hist(data):
     spike_distance    = np.array([d["sd"] for d in data.itervalues()])
     max_difference    = np.array([d["md"] for d in data.itervalues()])
     square_difference = np.array([d["sq"] for d in data.itervalues()])
@@ -87,3 +95,20 @@ if __name__ == "__main__":
     plt.axis(xmin=0)
     plt.xlabel("Mean square difference (mV$^2$/s)")
     plt.savefig("square_difference.pdf")
+
+
+if __name__ == "__main__":
+    data = np.load("results.npz")["data"].item()
+    # maxsd = find_max_item(data, "sd")
+    # maxmd = find_max_item(data, "md")
+    # maxsq = find_max_item(data, "sq")
+    # plot_item(maxsd, "maxsd")
+    # plot_item(maxmd, "maxmd")
+    # plot_item(maxsq, "maxsq")
+    # plot_all_hist(data)
+
+    configlen = len(data.keys()[0])
+    print("Ploting colour histograms")
+    for c in range(configlen):
+        colour_hist(data, c)
+        print("Finished with {}".format(param_names[c]))
