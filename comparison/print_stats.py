@@ -45,17 +45,14 @@ def colour_hist(data, cidx):
 
     for k in grouped_sd:
         plt.figure("Spike distance histogram")
-        plt.hist(grouped_sd[k], bins=np.linspace(0, maxsd, 21),
-                 histtype="step",
-                 label="{} = {}".format(pn, k))
+        y, x = np.histogram(grouped_sd[k], bins=np.linspace(0, maxsd, 21))
+        plt.plot(x[:-1], y, label="{} = {}".format(pn, k))
         plt.figure("Max difference histogram")
-        plt.hist(grouped_md[k], bins=np.linspace(0, maxmd, 21),
-                 histtype="step",
-                 label="{} = {}".format(pn, k))
+        y, x = np.histogram(grouped_md[k], bins=np.linspace(0, maxmd, 21))
+        plt.plot(x[:-1], y, label="{} = {}".format(pn, k))
         plt.figure("Squared diff   histogram")
-        plt.hist(grouped_sq[k], bins=np.linspace(0, maxsq, 21),
-                 histtype="step",
-                 label="{} = {}".format(pn, k))
+        y, x = np.histogram(grouped_sq[k], bins=np.linspace(0, maxsq, 21))
+        plt.plot(x[:-1], y, label="{} = {}".format(pn, k))
 
     plt.figure("Spike distance histogram")
     plt.legend()
