@@ -43,19 +43,11 @@ def ousim(mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th):
     ounet.add(ounrn)
 
     ounrn.V = V0
-    # print("mu_amp:    {} mV/ms,       mu_offs:    {} mV/ms\n"
-    #       "sigma_amp: {} mV/sqrt(ms), sigma_offs: {} mV/sqrt(ms)\n"
-    #       "frequency: {} Hz".format(
-    #           mu_amp, mu_offs, sigma_amp*sqrt(ms)/mV, sigma_offs*sqrt(ms)/mV,
-    #           freq))
-    # print("Configuring monitors...")
     V_mon = StateMonitor(ounrn, 'V', record=True)
     st_mon = SpikeMonitor(ounrn)
     ounet.add(V_mon, st_mon)
 
-    # print("Running simulation for {} seconds".format(duration))
     ounet.run(duration)
-    # print("OU done")
 
     V_mon.insert_spikes(st_mon, value=V_th*2)
     times = V_mon.times
@@ -63,8 +55,6 @@ def ousim(mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th):
     return times, st_mon.spiketimes[0], membrane
 
 def lifsim(mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th):
-    # mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th = config
-    # print("Setting up LIF simulation...")
     lifnet = Network()
     clock.reinit_default_clock()
     eqs = Equations('dV/dt = (-V+V0)/tau : volt')
@@ -74,10 +64,6 @@ def lifsim(mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th):
     lifnet.add(lifnrn)
     pulse_times = (np.arange(1, duration*freq, 1)+0.25)/freq
     pulse_spikes = []
-    # print("Generating input spike trains...")
-    # Nin = 5000
-    # mu_peak = mu_offs+mu_amp
-    # weight = mu_offs/Nin/freq
     Npoiss = 5000
     Npulse = 5000
     wpoiss = (mu_offs-mu_amp)/(Npoiss*freq)
@@ -95,19 +81,11 @@ def lifsim(mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th):
         poiss_conn = Connection(poiss_input, lifnrn, 'V', weight=wpoiss)
         lifnet.add(poiss_input, poiss_conn)
 
-    # print("N_in: {}, Np: {}, Ns: {}, wp: {} mV, ws: {} mV\n"
-    #       "S_in: {}, sigma_in: {} ms".format(
-    #           Nin, Npoiss, Npulse, wpoiss*1000, wpulse*1000,
-    #           1.0, sigma*1000))
-
-    # print("Configuring monitors...")
     V_mon = StateMonitor(lifnrn, 'V', record=True)
     st_mon = SpikeMonitor(lifnrn)
     lifnet.add(V_mon, st_mon)
 
-    # print("Running simulation for {} seconds".format(duration))
     lifnet.run(duration)
-    # print("LIF done")
 
     V_mon.insert_spikes(st_mon, value=V_th*2)
     times = V_mon.times
@@ -115,7 +93,6 @@ def lifsim(mu_amp, mu_offs, simga_amp, sigma_offs, freq, V_th):
     return times, st_mon.spiketimes[0], membrane
 
 def process_results(ou, lif, config):
-    # mu_amp, mu_offs, sigma_amp, sigma_offs, freq, V_th = config
     times_ou, spikes_ou, voltage_ou = ou
     times_lif, spikes_lif, voltage_lif = lif
 
@@ -125,11 +102,8 @@ def process_results(ou, lif, config):
     dist = kreuz.distance(spikes_lif, spikes_ou,
                           start, end, (end-start)/(1*ms))
     kdist = np.trapz(dist[1], dist[0])
-    # print("Spike train distance  : {}".format(kdist))
     maxdiff = np.max(np.abs(voltage_lif-voltage_ou))
-    # print("Max mem potential diff: {}".format(maxdiff))
     sqdiff = np.sum(np.square(voltage_lif-voltage_ou))
-    # print("Sum sq potential diff : {}".format(sqdiff))
 
     data = load_data("results.npz")
     OUdict  = {"V": voltage_ou,   "t": times_ou,   "spikes": spikes_ou}
