@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 duration = 0.5  # seconds
 
-param_names = ["$\mu_a$", "$\mu_a$", "$\sigma_a$", "$\sigma_0$",
+param_names = ["$\mu_a$", "$\mu_0$", "$\sigma_a$", "$\sigma_0$",
                "$f$", "$V_{th}$"]
 
 def find_max_item(data, key):
@@ -45,13 +45,16 @@ def colour_hist(data, cidx):
 
     for k in grouped_sd:
         plt.figure("Spike distance histogram")
-        plt.hist(grouped_sd[k], bins=np.linspace(0, maxsd, 11),
+        plt.hist(grouped_sd[k], bins=np.linspace(0, maxsd, 21),
+                 histtype="step",
                  label="{} = {}".format(pn, k))
         plt.figure("Max difference histogram")
-        plt.hist(grouped_md[k], bins=np.linspace(0, maxmd, 11),
+        plt.hist(grouped_md[k], bins=np.linspace(0, maxmd, 21),
+                 histtype="step",
                  label="{} = {}".format(pn, k))
         plt.figure("Squared diff   histogram")
-        plt.hist(grouped_sq[k], bins=np.linspace(0, maxsq, 11),
+        plt.hist(grouped_sq[k], bins=np.linspace(0, maxsq, 21),
+                 histtype="step",
                  label="{} = {}".format(pn, k))
 
     plt.figure("Spike distance histogram")
