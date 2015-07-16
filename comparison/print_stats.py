@@ -10,11 +10,24 @@ param_units = [mV/ms, mV/ms, mV/sqrt(ms), mV/sqrt(ms),
                Hz, mV]
 
 def find_max_item(data, key):
-    keyvals = []
-    for d in data.itervalues():
-        keyvals.append(d[key])
-    print("{}: {}".format(key, max(keyvals)))
-    return data.values()[np.argmax(keyvals)]
+    if key == "sd":
+        spikes = True
+    else:
+        spikes = False
+    maxvalue = 0
+    for config in data:
+        d = data[config]
+        Vth = config[5]
+        # nspikes = len(d["OU"]["spikes"])+len(d["LIF"]["spikes"])
+        # if ((nspikes > 0) and spikes) or ((nspikes == 0) and not spikes):
+        if ((Vth > 50*mV) and not spikes) or ((Vth < 50*mV) and spikes):
+            if (config[2] > 0.3*mV/sqrt(ms)) or (config[3] > 0.3*mV/sqrt(ms)):
+                continue
+            if d[key] > maxvalue:
+                maxvalue = d[key]
+                maxkey = config
+    print("{}: {} \t({})".format(key, maxvalue, maxkey))
+    return data[maxkey]
 
 def plot_item(item, name):
     plt.figure(name)
@@ -94,20 +107,31 @@ def plot_all_hist(data):
     sp = nspikes > 0
     nsp = nspikes == 0
 
+    # mu_a = np.array([c[0] for c in data.iterkeys()])
+    # mu_0 = np.array([c[1] for c in data.iterkeys()])
+
+    sigma_a = np.array([c[2] for c in data.iterkeys()])
+    sigma_0 = np.array([c[3] for c in data.iterkeys()])
+    # small sigma
+    ss = (sigma_a < 0.5*mV/sqrt(ms)) & (sigma_0 < 0.5*mV/sqrt(ms))
+
+    idx = sp & ss
     plt.figure("Spike distance")
-    plt.hist(spike_distance[sp], bins=50)
+    plt.hist(spike_distance[idx], bins=50)
     plt.axis(xmin=0)
     plt.xlabel("SPIKE-distance")
     plt.savefig("spike_distance.pdf")
 
+    idx = nsp & ss
+    print("MAX V {}".format(max([max(d["OU"]["V"]) for d in np.array(data.values())[idx]])*1000))
     plt.figure("Max deviation")
-    plt.hist(max_difference[nsp]*1000, bins=50)
+    plt.hist(max_difference[idx]*1000, bins=50)
     plt.axis(xmin=0)
     plt.xlabel("Maximum deviation (mV)")
     plt.savefig("max_difference.pdf")
 
     plt.figure("Squared difference")
-    plt.hist(rms[nsp]*1000, bins=50)
+    plt.hist(rms[idx]*1000, bins=50)
     plt.axis(xmin=0)
     plt.xlabel("Root mean squared error (mV)")
     plt.savefig("rms.pdf")
@@ -119,13 +143,14 @@ if __name__ == "__main__":
     maxmd = find_max_item(data, "md")
     maxsq = find_max_item(data, "sq")
     maxrms = find_max_item(data, "rms")
+
     plot_item(maxsd, "maxsd")
     plot_item(maxmd, "maxmd")
     plot_item(maxsq, "maxsq")
     plot_item(maxrms, "maxrms")
     plot_all_hist(data)
 
-    # configlen = len(data.keys()[0])
+    configlen = len(data.keys()[0])
     # print("Ploting colour histograms")
     # for c in range(configlen):
     #     colour_hist(data, c, False)
