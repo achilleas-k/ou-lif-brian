@@ -24,7 +24,7 @@ def plot_item(item, name):
     plt.ylabel("V (mV)")
     plt.savefig(name+".pdf")
 
-def colour_hist(data, cidx):
+def colour_hist(data, cidx, spikes):
     pn = param_names[cidx]
     un = param_units[cidx]
     grouped_sd = {}
@@ -35,42 +35,54 @@ def colour_hist(data, cidx):
     maxsq = 0
     for config in data:
         k = config[cidx]
+        if ((len(data[config]["OU"]["spikes"]) > 0) ^ spikes):
+            continue
         if k in grouped_sd:
             grouped_sd[k].append(data[config]["sd"])
-            grouped_md[k].append(data[config]["md"])
-            grouped_sq[k].append(data[config]["sq"])
+            grouped_md[k].append(data[config]["md"]*1e3)
+            grouped_sq[k].append(data[config]["sq"]*1e6)
         else:
             grouped_sd[k] = [data[config]["sd"]]
-            grouped_md[k] = [data[config]["md"]]
-            grouped_sq[k] = [data[config]["sq"]]
+            grouped_md[k] = [data[config]["md"]*1e3]
+            grouped_sq[k] = [data[config]["sq"]*1e6]
         maxsd = max(maxsd, data[config]["sd"])
-        maxmd = max(maxsd, data[config]["md"])
-        maxsq = max(maxsd, data[config]["sq"])
+        maxmd = max(maxsd, data[config]["md"]*1e3)
+        maxsq = max(maxsd, data[config]["sq"]*1e6)
 
     for k in sorted(grouped_sd.iterkeys()):
         plt.figure("Spike distance histogram")
-        y, x = np.histogram(grouped_sd[k], bins=np.linspace(0, maxsd, 21))
+        y, x = np.histogram(grouped_sd[k], bins=np.linspace(0, maxsd, 6), normed=True)
         plt.plot(x[:-1], y, label="{} = {}".format(pn, display_in_unit(k, un)))
         plt.figure("Max difference histogram")
-        y, x = np.histogram(grouped_md[k], bins=np.linspace(0, maxmd, 21))
+        y, x = np.histogram(grouped_md[k], bins=np.linspace(0, maxmd, 6), normed=True)
         plt.plot(x[:-1], y, label="{} = {}".format(pn, display_in_unit(k, un)))
         plt.figure("Squared diff   histogram")
-        y, x = np.histogram(grouped_sq[k], bins=np.linspace(0, maxsq, 21))
+        y, x = np.histogram(grouped_sq[k], bins=np.linspace(0, maxsq, 6), normed=True)
         plt.plot(x[:-1], y, label="{} = {}".format(pn, display_in_unit(k, un)))
 
+    if spikes:
+        sx = "spks"
+    else:
+        sx = "nspk"
     plt.figure("Spike distance histogram")
     plt.legend()
-    plt.savefig("sdhist_{}.pdf".format(pn.replace("$","")))
+    plt.xlabel("SPIKE-distance")
+    plt.ylabel("Number of samples")
+    plt.savefig("sdhist_{}_{}.pdf".format(pn.replace("$",""), sx))
     plt.clf()
 
     plt.figure("Max difference histogram")
     plt.legend()
-    plt.savefig("mdhist_{}.pdf".format(pn.replace("$","")))
+    plt.xlabel("Maximum difference (mV)")
+    plt.ylabel("Number of samples")
+    plt.savefig("mdhist_{}_{}.pdf".format(pn.replace("$",""), sx))
     plt.clf()
 
     plt.figure("Squared diff   histogram")
     plt.legend()
-    plt.savefig("sqhist_{}.pdf".format(pn.replace("$","")))
+    plt.xlabel("Summed squared difference (mV$^2$)")
+    plt.ylabel("Number of samples")
+    plt.savefig("sqhist_{}_{}.pdf".format(pn.replace("$",""), sx))
     plt.clf()
 
 def plot_all_hist(data):
@@ -114,5 +126,6 @@ if __name__ == "__main__":
     configlen = len(data.keys()[0])
     print("Ploting colour histograms")
     for c in range(configlen):
-        colour_hist(data, c)
+        colour_hist(data, c, False)
+        colour_hist(data, c, True)
         print("Finished with {}".format(param_names[c]))
