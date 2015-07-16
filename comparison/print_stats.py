@@ -1,10 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from brian import display_in_unit, mV, ms, Hz, sqrt
 
 duration = 0.5  # seconds
 
 param_names = ["$\mu_a$", "$\mu_0$", "$\sigma_a$", "$\sigma_0$",
                "$f$", "$V_{th}$"]
+param_units = [mV/ms, mV/ms, mV/sqrt(ms), mV/sqrt(ms),
+               Hz, mV]
 
 def find_max_item(data, key):
     keyvals = []
@@ -23,6 +26,7 @@ def plot_item(item, name):
 
 def colour_hist(data, cidx):
     pn = param_names[cidx]
+    un = param_units[cidx]
     grouped_sd = {}
     grouped_md = {}
     grouped_sq = {}
@@ -43,16 +47,16 @@ def colour_hist(data, cidx):
         maxmd = max(maxsd, data[config]["md"])
         maxsq = max(maxsd, data[config]["sq"])
 
-    for k in grouped_sd:
+    for k in sorted(grouped_sd.iterkeys()):
         plt.figure("Spike distance histogram")
         y, x = np.histogram(grouped_sd[k], bins=np.linspace(0, maxsd, 21))
-        plt.plot(x[:-1], y, label="{} = {}".format(pn, k))
+        plt.plot(x[:-1], y, label="{} = {}".format(pn, display_in_unit(k, un)))
         plt.figure("Max difference histogram")
         y, x = np.histogram(grouped_md[k], bins=np.linspace(0, maxmd, 21))
-        plt.plot(x[:-1], y, label="{} = {}".format(pn, k))
+        plt.plot(x[:-1], y, label="{} = {}".format(pn, display_in_unit(k, un)))
         plt.figure("Squared diff   histogram")
         y, x = np.histogram(grouped_sq[k], bins=np.linspace(0, maxsq, 21))
-        plt.plot(x[:-1], y, label="{} = {}".format(pn, k))
+        plt.plot(x[:-1], y, label="{} = {}".format(pn, display_in_unit(k, un)))
 
     plt.figure("Spike distance histogram")
     plt.legend()
