@@ -12,11 +12,11 @@ def get_rand(data, good):
     ridx = np.random.choice(len(configs))
     randc = configs[ridx]
     if good:
-        while not (data[randc]["rms"] < goodrmsth and randc[5] < 100*mV):
+        while not (data[randc]["rms"] < goodrmsth and randc[5] == 100*mV):
             ridx = np.random.choice(len(configs))
             randc = configs[ridx]
     else:
-        while not (data[randc]["rms"] > badrmsth  and randc[5] < 100*mV):
+        while not (data[randc]["rms"] > badrmsth  and randc[5] == 100*mV):
             ridx = np.random.choice(len(configs))
             randc = configs[ridx]
 
