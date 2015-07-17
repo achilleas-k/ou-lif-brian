@@ -2,23 +2,21 @@ import numpy as np
 from brian import mV
 import matplotlib.pyplot as plt
 
-goodrmsth = 0.0015
-badrmsth  = 0.0035
+goodrmsth = 0.001
+badrmsth  = 0.003
 
 
 def get_rand(data, good):
-    # good here means RMS < 1.5 mV
-    configs = data.keys()
-    ridx = np.random.choice(len(configs))
-    randc = configs[ridx]
+    rmslist = np.array([d["rms"] for d in data.itervalues()])
+    vthlist = np.array([c[5] for c in data.iterkeys()])
     if good:
-        while not (data[randc]["rms"] < goodrmsth and randc[5] == 100*mV):
-            ridx = np.random.choice(len(configs))
-            randc = configs[ridx]
+        valididx = np.flatnonzero((rmslist < goodrmsth) & (vthlist == 100*mV))
     else:
-        while not (data[randc]["rms"] > badrmsth  and randc[5] == 100*mV):
-            ridx = np.random.choice(len(configs))
-            randc = configs[ridx]
+        valididx = np.flatnonzero((rmslist > badrmsth)  & (vthlist == 100*mV))
+    if len(valididx) == 0:
+        print("No valid indices. Change your thresholds!")
+    randidx = np.random.choice(valididx)
+    randc = data.keys()[randidx]
 
     print(randc)
 
@@ -40,15 +38,11 @@ def make_fname(config):
         ma, mo, sa, so, freq, vth).replace(".", "_")
     return basename+".pdf"
 
-def plot_traces(data, config):
+def plot_traces(data, config, prefix):
     d   = data[config]
     t   = d["OU"]["t"]
     ou  = d["OU"]["V"]
     lif = d["LIF"]["V"]
-    if (data[config]["rms"] > badrmsth):
-        prefix = "bd_"
-    else:
-        prefix = "gd_"
     plt.figure()
     plt.plot(t, ou*1000, color="b")
     plt.plot(t, lif*1000, color="g")
@@ -61,8 +55,8 @@ def plot_traces(data, config):
 data = np.load("results.npz")["data"].item()
 
 confignsp, configsp = get_rand(data, good=True)
-plot_traces(data, confignsp)
-plot_traces(data, configsp)
+plot_traces(data, confignsp, "gd_")
+plot_traces(data, configsp,  "gd_")
 confignsp, configsp = get_rand(data, good=False)
-plot_traces(data, confignsp)
-plot_traces(data, configsp)
+plot_traces(data, confignsp, "bd_")
+plot_traces(data, configsp,  "bd_")
