@@ -82,22 +82,25 @@ data = np.load("results.npz")["data"].item()
 # plot_traces(data, configsp,  "bd_")
 
 # nice good config
-config = (0.5*mV/ms, 1.0*mV/ms, 0.1*mV/sqrt(ms), 0.1*mV/sqrt(ms), 10*Hz, 100*mV)
-plot_traces(data, config, "gd_")
-config = (0.5*mV/ms, 1.0*mV/ms, 0.1*mV/sqrt(ms), 0.1*mV/sqrt(ms), 10*Hz, 10*mV)
-plot_traces(data, config, "gd_")
-
 print("Stats for 'good' sample:")
+config = (0.5*mV/ms, 1.0*mV/ms, 0.1*mV/sqrt(ms), 0.1*mV/sqrt(ms), 10*Hz, 100*mV)
 d = data[config]
-print("Spike distance: {}\nMaximum difference: {}\nRMS: {}".format(
-    d["sd"], d["md"], d["rms"]))
+print("Maximum difference: {}\nRMS: {}".format(d["md"]*1000, d["rms"]*1000))
+plot_traces(data, config, "gd_")
 
+config = (0.5*mV/ms, 1.0*mV/ms, 0.1*mV/sqrt(ms), 0.1*mV/sqrt(ms), 10*Hz, 10*mV)
+d = data[config]
+print("Spike distance: {}".format(d["sd"]))
+plot_traces(data, config, "gd_")
+
+
+print("\n--\nStats for 'bad' sample:")
 config = (0.5*mV/ms, 1.0*mV/ms, 0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 20*Hz, 100*mV)
-plot_traces(data, config, "bd_")
-config = (0.5*mV/ms, 1.0*mV/ms, 0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 20*Hz, 10*mV)
+d = data[config]
+print("Maximum difference: {}\nRMS: {}".format(d["md"]*1000, d["rms"]*1000))
 plot_traces(data, config, "bd_")
 
-print("Stats for 'bad' sample:")
+config = (0.5*mV/ms, 1.0*mV/ms, 0.1*mV/sqrt(ms), 0.5*mV/sqrt(ms), 20*Hz, 10*mV)
 d = data[config]
-print("Spike distance: {}\nMaximum difference: {}\nRMS: {}".format(
-    d["sd"], d["md"], d["rms"]))
+print("Spike distance: {}".format(d["sd"]))
+plot_traces(data, config, "bd_")
