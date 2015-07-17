@@ -2,6 +2,9 @@ import numpy as np
 from brian import mV
 import matplotlib.pyplot as plt
 
+goodrmsth = 0.0015
+badrmsth  = 0.0035
+
 
 def get_rand(data, good):
     # good here means RMS < 1.5 mV
@@ -9,11 +12,11 @@ def get_rand(data, good):
     ridx = np.random.choice(len(configs))
     randc = configs[ridx]
     if good:
-        while data[randc]["rms"] > 0.0015 or randc[5] < 100*mV:
+        while not (data[randc]["rms"] > goodrmsth and randc[5] < 100*mV):
             ridx = np.random.choice(len(configs))
             randc = configs[ridx]
     else:
-        while data[randc]["rms"] < 0.0025 or randc[5] < 100*mV:
+        while not (data[randc]["rms"] > badrmsth  and randc[5] < 100*mV):
             ridx = np.random.choice(len(configs))
             randc = configs[ridx]
 
@@ -42,6 +45,10 @@ def plot_traces(data, config):
     t   = d["OU"]["t"]
     ou  = d["OU"]["V"]
     lif = d["LIF"]["V"]
+    if (data[config]["rms"] > badrmsth):
+        prefix = "bd_"
+    else:
+        prefix = "gd_"
     plt.figure()
     plt.plot(t, ou*1000, color="b")
     plt.plot(t, lif*1000, color="g")
@@ -49,7 +56,7 @@ def plot_traces(data, config):
     if (nsp > 0):
         plt.xlabel("t (s)")
     plt.ylabel("V (mV)")
-    plt.savefig(make_fname(config))
+    plt.savefig(prefix+make_fname(config))
 
 data = np.load("results.npz")["data"].item()
 
