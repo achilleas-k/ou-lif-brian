@@ -31,9 +31,6 @@ def plot_est_vs_act_err(x_data, y_data, x_label, y_label, figname='',
         y_data = np.array(y_data)[nz_i]
         x_data = np.array(x_data)[nz_i]
 
-    '''
-    Compute averages and error bars.
-    '''
     x_data = x_data.round(4) # rounding prevents duplicates due to fp precision
     y_data = y_data.round(4)
     positions = []
@@ -43,10 +40,6 @@ def plot_est_vs_act_err(x_data, y_data, x_label, y_label, figname='',
         inds = np.flatnonzero(x_data == ux)
         positions.append(ux)
         data.append(y_data[inds])
-
-    if figname=="frequency_estimation":
-        plt.hist(np.abs(x_data-y_data), log=True)
-        plt.show()
 
     oneline = [min(min(y_data), min(x_data)), max(max(y_data), max(x_data))]
     dpi = 100
@@ -67,6 +60,30 @@ def plot_est_vs_act_err(x_data, y_data, x_label, y_label, figname='',
     plt.subplots_adjust(left=leftright, bottom=0.2, right=1-leftright)
     if axis_limits is not None:
         plt.axis(axis_limits)
+    savetypes = ["pdf"] #, "png", "eps", "svg"]
+    for ft in savetypes:
+        filename = "%s/%s.%s" % (plot_save_loc, figname, ft)
+        plt.savefig(filename)
+        print("Figures saved: %s" % (filename))
+    plt.clf()
+    return
+
+def plot_error_hist(data, x_label, y_label, figname='', size=(800, 600),
+                    ticks=None):
+    dpi = 100
+    fontsize = 20
+    size = (size[0]/dpi, size[1]/dpi)
+    plt.figure(figsize=size, dpi=dpi)
+    plt.hist(data, log=True)
+    plt.xlabel(x_label, fontsize=fontsize)
+    plt.ylabel(y_label, fontsize=fontsize)
+    if ticks is None:
+        plt.xticks(fontsize=fontsize)
+    else:
+        plt.xticks(ticks[0], ticks[1], fontsize=fontsize)
+    plt.yticks(fontsize=fontsize)
+    leftright = 0.1*12/size[0]
+    plt.subplots_adjust(left=leftright, bottom=0.2, right=1-leftright)
     savetypes = ["pdf"] #, "png", "eps", "svg"]
     for ft in savetypes:
         filename = "%s/%s.%s" % (plot_save_loc, figname, ft)
@@ -103,9 +120,14 @@ if __name__=='__main__':
     spiketimes = archive['spiketimes']
 
     # Start plotting
-    plot_est_vs_act_err(freq_actual, freq_est, '$f \mathrm{(Hz)}$',
-                        '$\hat{f} \mathrm{(Hz)}$', 'frequency_estimation',
-                        plot_zeros=True, axis_limits=[0, 25, 0, 25])
+    plot_error_hist(np.abs(freq_actual-freq_est),
+                    r'$\varepsilon_f^{a} \mathrm{(Hz)}$', 'Error frequency',
+                    'frequency_err_abs', size=(600, 450),
+                    ticks=(frange(0, 50, 5),
+                           [0, '', 10, '', 20, '', 30, '', 40, '', 50]))
+    plot_error_hist(np.abs(freq_actual-freq_est)/freq_actual,
+                    r'$\varepsilon_f^{r}$', 'Error frequency',
+                    'frequency_err_rel', size=(600, 450))
 
     plot_est_vs_act_err(mu_peaks_actual, mu_peaks_est,
                         '$\mu_p \mathrm{(mV/ms)}$',
