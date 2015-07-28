@@ -44,6 +44,9 @@ def plot_est_vs_act_err(x_data, y_data, x_label, y_label, figname='',
         positions.append(ux)
         data.append(y_data[inds])
 
+    if figname=="frequency_estimation":
+        plt.hist(np.abs(x_data-y_data), log=True)
+        plt.show()
 
     oneline = [min(min(y_data), min(x_data)), max(max(y_data), max(x_data))]
     dpi = 100
